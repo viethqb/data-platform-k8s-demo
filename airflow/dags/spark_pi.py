@@ -45,20 +45,17 @@ default_args = {
 
 # [START instantiate_dag]
 
-dag = DAG(
+with DAG(
     "spark_pi",
     start_date=days_ago(1),
     default_args=default_args,
     schedule_interval=timedelta(days=1),
     tags=["example"],
-)
+) as dag:
 
-submit = SparkKubernetesOperator(
-    task_id="spark_transform_data",
-    namespace="spark-operator",
-    application_file="/opt/airflow/dags/repo/airflow/spark/spark_pi.yaml",
-    kubernetes_conn_id="kubernetes_default",
-)
-
-
-submit
+    submit = SparkKubernetesOperator(
+        task_id="spark_transform_data",
+        namespace="spark-operator",
+        application_file="/opt/airflow/dags/repo/airflow/spark/spark_pi.yaml",
+        kubernetes_conn_id="kubernetes_default",
+    )
