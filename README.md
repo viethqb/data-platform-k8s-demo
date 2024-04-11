@@ -16,3 +16,10 @@ Connection Type: Amazon Web Services
 AWS Access Key ID: admin 
 AWS Secret Access Key: password
 Extra: {"endpoint_url": "http://minio.minio.svc.cluster.local:9000"}
+
+kubectl create role spark-operator-submitter --verb=create,get --resource=sparkapplications,pods/log --namespace=spark-operator
+
+kubectl create rolebinding airflow-worker-spark-submitter \
+  --role=spark-operator-submitter \
+  --serviceaccount=airflow:airflow-worker \
+  --namespace=spark-operator

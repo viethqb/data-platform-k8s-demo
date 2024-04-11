@@ -1,4 +1,4 @@
-defaultAirflowRepository: apache/airflow
+defaultAirflowRepository: viet1846/airflow
 
 defaultAirflowTag: "2.8.3"
 
