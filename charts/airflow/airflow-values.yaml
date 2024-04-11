@@ -61,7 +61,7 @@ executor: "KubernetesExecutor"
 
 extraEnv: |
   - name: AIRFLOW__CORE__DAGS_FOLDER
-    value: '/opt/airflow/dags/repo/dags'
+    value: '/opt/airflow/dags/repo/airflow/dags'
   - name: AIRFLOW__CORE__DEFAULT_TIMEZONE
     value: 'Asia/Ho_Chi_Minh'
   - name: AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT
