@@ -31,25 +31,25 @@ default_args = {
 # [END default_args]
 
 dag = DAG(
-    "spark_pi",
+    "main_iceberg",
     default_args=default_args,
     schedule_interval=None,
     tags=["example", "spark"],
 )
 
 submit = SparkKubernetesOperator(
-    task_id="spark_pi_submit",
+    task_id="main_iceberg_submit",
     namespace="spark-operator",
-    application_file="spark/jobs/spark_pi.yaml",
+    application_file="spark/jobs/main_iceberg.yaml",
     kubernetes_conn_id="kubernetes_default",
     do_xcom_push=True,
     dag=dag,
 )
 
 sensor = SparkKubernetesSensor(
-    task_id="spark_pi_monitor",
+    task_id="main_iceberg_monitor",
     namespace="spark-operator",
-    application_name="{{ task_instance.xcom_pull(task_ids='spark_pi_submit')['metadata']['name'] }}",
+    application_name="{{ task_instance.xcom_pull(task_ids='main_iceberg_submit')['metadata']['name'] }}",
     kubernetes_conn_id="kubernetes_default",
     dag=dag,
     attach_log=True,
