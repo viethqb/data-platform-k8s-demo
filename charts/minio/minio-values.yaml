@@ -1,0 +1,8 @@
+auth:
+  rootUser: admin
+  rootPassword: "password"
+ingress:
+  enabled: true
+  ingressClassName: "nginx"
+  hostname: minio-test.lakehouse.ggg.com.vn
+defaultBuckets: lakehouse
