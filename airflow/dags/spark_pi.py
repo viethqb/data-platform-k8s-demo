@@ -44,7 +44,6 @@ submit = SparkKubernetesOperator(
     kubernetes_conn_id="kubernetes_default",
     do_xcom_push=True,
     dag=dag,
-    enable_impersonation_from_ldap_user=False,
 )
 
 sensor = SparkKubernetesSensor(
