@@ -32,7 +32,7 @@ default_args = {
 
 # [START instantiate_dag]
 dag = DAG(
-    "spark_pi",
+    "spark_pi_1",
     default_args=default_args,
     schedule_interval=timedelta(days=1),
     tags=["example"],
