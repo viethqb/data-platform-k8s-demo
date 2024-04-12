@@ -180,7 +180,7 @@ dags:
   gitSync:
     enabled: true
 
-    repo: https://github.com/viethqb/spark-minio-iceberg-k8s-demo.git
+    repo: https://github.com/viethqb/spark-trino-minio-iceberg-k8s-demo.git
     branch: main
     rev: HEAD
     depth: 1
