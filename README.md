@@ -3,17 +3,27 @@
 kind create cluster --name dev --config kind-config.yaml
 ```
 
-## Install hive metastore & minio & airflow
+## Install Minio
+```
+helm upgrade --install minio -n minio -f ./charts/minio/minio-values.yaml ./charts/minio --create-namespace --debug
+```
+
+## Install Hive Metastore
 ```
 helm upgrade --install metastore-db -n metastore -f ./charts/postgres/hive-metastore-postgres-values.yaml ./charts/postgres --create-namespace --debug
-helm upgrade --install minio -n minio -f ./charts/minio/minio-values.yaml ./charts/minio --create-namespace --debug
 helm upgrade --install hive-metastore -n metastore -f ./charts/hive-metastore/hive-metastore-values.yaml ./charts/hive-metastore --create-namespace --debug
+```
+
+## Install Airflow
+```
 helm upgrade --install airflow -n airflow -f ./charts/airflow/airflow-values.yaml ./charts/airflow/ --create-namespace --debug
 ```
+
 ## Data sample
 ```
 link: https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2009-01.parquet
 source: https://github.com/toddwschneider/nyc-taxi-data
+
 ```
 ## Install Spark Operator
 ```
