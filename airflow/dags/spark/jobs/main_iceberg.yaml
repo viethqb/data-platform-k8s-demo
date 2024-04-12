@@ -2,7 +2,7 @@
 apiVersion: "sparkoperator.k8s.io/v1beta2"
 kind: SparkApplication
 metadata:
-  name: spark-iceberg
+  name: spark-iceberg-{{ ts_nodash|lower }}-{{ task_instance.try_number }}
   namespace: spark-operator
 spec:
   type: Python
@@ -11,7 +11,7 @@ spec:
   image: "viet1846/spark-lakehouse:v1"
   imagePullPolicy: Always
   mainApplicationFile: local:///app/main-iceberg.py
-  sparkVersion: "3.5.1"
+  sparkVersion: "3.4.1"
   restartPolicy:
     type: OnFailure
     onFailureRetries: 3
@@ -22,7 +22,7 @@ spec:
     cores: 1
     memory: "1024m"
     labels:
-      version: 3.5.1
+      version: 3.4.1
     serviceAccount: spark-operator-spark
     env:
       - name: AWS_REGION
@@ -36,7 +36,7 @@ spec:
     instances: 3
     memory: "2048m"
     labels:
-      version: 3.3.2
+      version: 3.4.1
     env:
       - name: AWS_REGION
         value: us-east-1
