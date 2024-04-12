@@ -92,3 +92,30 @@ trino> select * from lakehouse.nyc.taxis_large limit 10;
 #(10 rows)
 
 ```
+
+## Trino Pivot
+
+```
+with dataset(Feature_Area, Feature, Product, Status) as
+         (values ('User experience', 'Sign Up', 'App1', 0),
+                 ('User experience', 'Sign Up', 'App1', 1),
+                 ('User experience', 'Sign Up', 'App1', 7),
+                 ('User experience', 'Sign Up', 'App2', 1),
+                 ('User experience', 'Log off', 'App1', 2),
+                 ('User experience', 'Log off', 'App2', 3),
+                 ('Back End', 'Update User', 'App3', 4),
+                 ('Back End', 'Delete User', 'App3', 5)),
+     agg as (select Feature_Area, Feature, Product, avg(Status) as avg_col
+             from dataset
+             group by 1, 2, 3),
+     map_agg as (select Feature_Area, Feature, map_agg(Product, avg_col) as key
+from agg
+group by 1, 2)
+SELECT Feature_Area,
+       Feature,
+       element_at(KEY, 'App1') AS App1,
+       element_at(KEY, 'App2') AS App2,
+       element_at(KEY, 'App3') AS App3
+from map_agg
+
+```
