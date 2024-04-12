@@ -66,29 +66,7 @@ def load_config(spark_context: SparkContext):
 
 load_config(spark.sparkContext)
 
-# # Define schema for NYC Taxi Data
-# schema = StructType(
-#     [
-#         StructField("VendorID", LongType(), True),
-#         StructField("tpep_pickup_datetime", StringType(), True),
-#         StructField("tpep_dropoff_datetime", StringType(), True),
-#         StructField("passenger_count", DoubleType(), True),
-#         StructField("trip_distance", DoubleType(), True),
-#         StructField("RatecodeID", DoubleType(), True),
-#         StructField("store_and_fwd_flag", StringType(), True),
-#         StructField("PULocationID", LongType(), True),
-#         StructField("DOLocationID", LongType(), True),
-#         StructField("payment_type", LongType(), True),
-#         StructField("fare_amount", DoubleType(), True),
-#         StructField("extra", DoubleType(), True),
-#         StructField("mta_tax", DoubleType(), True),
-#         StructField("tip_amount", DoubleType(), True),
-#         StructField("tolls_amount", DoubleType(), True),
-#         StructField("improvement_surcharge", DoubleType(), True),
-#         StructField("total_amount", DoubleType(), True),
-#     ]
-# )
-# Read CSV file from MinIO
+# Read Parquet file from MinIO
 df = spark.read.option("header", "true").parquet(
     "s3a://openlake/spark/sample-data/yellow_tripdata_2009-01.parquet",
 )

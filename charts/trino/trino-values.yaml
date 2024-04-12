@@ -1,0 +1,10 @@
+additionalCatalogs:
+  lakehouse: |
+    connector.name=iceberg
+    hive.metastore.uri=thrift://hive-metastore.metastore.svc.cluster.local:9083
+    hive.s3.path-style-access=true
+    hive.s3.endpoint=http://minio.minio.svc.cluster.local:9000
+    hive.s3.aws-access-key=admin
+    hive.s3.aws-secret-key=password
+    iceberg.register-table-procedure.enabled=true
+    iceberg.unique-table-location=true
