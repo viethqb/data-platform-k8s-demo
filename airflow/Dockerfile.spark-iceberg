@@ -1,11 +1,11 @@
-FROM viet1846/spark-py:v3.5.1
+FROM apache/spark:3.4.1-scala2.12-java11-python3-ubuntu
 
 USER root
 
-ENV SPARK_VERSION_SHORT=3.5
-ENV SPARK_VERSION=3.5.1
-ENV AWS_SDK_VERSION=1.12.699
-ENV HADOOP_AWS_VERSION=3.4.0
+ENV SPARK_VERSION_SHORT=3.4
+ENV SPARK_VERSION=3.4.2
+ENV AWS_SDK_VERSION=1.12.262
+ENV HADOOP_AWS_VERSION=3.3.4
 
 # Configure SPARK
 RUN apt-get update -y && apt-get install -y curl wget
@@ -15,10 +15,11 @@ RUN curl https://repo1.maven.org/maven2/org/apache/spark/spark-hadoop-cloud_2.12
 
 # Configure ICEBERG
 ENV ICEBERG_VERSION=1.5.0
-ENV AWS_SDK_BUNDLE_VERSION=2.25.29
+ENV AWS_SDK_BUNDLE_VERSION=2.20.18
 
 RUN curl https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-spark-runtime-${SPARK_VERSION_SHORT}_2.12/${ICEBERG_VERSION}/iceberg-spark-runtime-${SPARK_VERSION_SHORT}_2.12-${ICEBERG_VERSION}.jar -o ${SPARK_HOME}/jars/iceberg-spark-runtime-${SPARK_VERSION_SHORT}_2.12-${ICEBERG_VERSION}.jar
 RUN curl https://repo1.maven.org/maven2/software/amazon/awssdk/bundle/${AWS_SDK_BUNDLE_VERSION}/bundle-${AWS_SDK_BUNDLE_VERSION}.jar -Lo /opt/spark/jars/aws-bundle-${AWS_SDK_BUNDLE_VERSION}.jar
 RUN curl https://repo1.maven.org/maven2/software/amazon/awssdk/url-connection-client/${AWS_SDK_BUNDLE_VERSION}/url-connection-client-${AWS_SDK_BUNDLE_VERSION}.jar -Lo /opt/spark/jars/url-connection-client-${AWS_SDK_BUNDLE_VERSION}.jar
 
-ENTRYPOINT ["tail", "-f", "/dev/null"]
+# Configure PYTHON
+ENV PYTHONPATH=$SPARK_HOME/python:$SPARK_HOME/python/lib/py4j-0.10.9.7-src.zip:$PYTHONPATH

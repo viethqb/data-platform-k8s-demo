@@ -96,6 +96,8 @@ df = (
     )
 )
 
+create_schema_df = spark.sql("CREATE DATABASE nyc")
+create_schema_df.show()
 # Create Iceberg table "nyc.taxis_large" from RDD
 df.write.mode("overwrite").saveAsTable("nyc.taxis_large")
 
