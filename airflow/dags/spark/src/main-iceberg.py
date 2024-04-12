@@ -97,7 +97,6 @@ create_schema_df = spark.sql("CREATE DATABASE IF NOT EXISTS nyc ")
 create_schema_df.show()
 # Create Iceberg table "nyc.taxis_large" from RDD
 df.write.mode("overwrite").saveAsTable("nyc.taxis_large")
-
 # Query table row count
 count_df = spark.sql("SELECT COUNT(*) AS cnt FROM nyc.taxis_large")
 total_rows_count = count_df.first().cnt
