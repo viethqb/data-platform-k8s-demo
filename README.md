@@ -1,4 +1,4 @@
-### Install hive metastore & minio & airflow
+## Install hive metastore & minio & airflow
 ```
 helm upgrade --install metastore-db -n metastore -f ./charts/postgres/hive-metastore-postgres-values.yaml ./charts/postgres --create-namespace --debug
 helm upgrade --install minio -n minio -f ./charts/minio/minio-values.yaml ./charts/minio --create-namespace --debug
@@ -14,7 +14,7 @@ kubectl create role spark-operator-submitter --verb=create,get --resource=sparka
 kubectl create rolebinding airflow-worker-spark-submitter --role=spark-operator-submitter --serviceaccount=airflow:airflow-worker --namespace=spark-operator
 ```
 
-## create s3 connection in airflow ui
+## Create s3 connection in airflow ui (Airflow remote logging)
 ```
 Connection Id: s3_default
 Connection Type: Amazon Web Services
@@ -23,7 +23,7 @@ AWS Secret Access Key: password
 Extra: {"endpoint_url": "http://minio.minio.svc.cluster.local:9000"}
 ```
 
-## create kubernetes connection in airflow ui
+## Create kubernetes connection in Airflow ui
 
 ```
 Connection Id: kubernetes_default
