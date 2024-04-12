@@ -19,7 +19,7 @@ helm upgrade --install hive-metastore -n metastore -f ./charts/hive-metastore/hi
 helm upgrade --install airflow -n airflow -f ./charts/airflow/airflow-values.yaml ./charts/airflow/ --create-namespace --debug
 ```
 
-## Data sample
+## Data Sample
 ```
 link: https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2009-01.parquet
 source: https://github.com/toddwschneider/nyc-taxi-data
@@ -33,7 +33,7 @@ kubectl create role spark-operator-submitter --verb=create,get --resource=sparka
 kubectl create rolebinding airflow-worker-spark-submitter --role=spark-operator-submitter --serviceaccount=airflow:airflow-worker --namespace=spark-operator
 ```
 
-## Create s3 connection in airflow ui (Airflow remote logging)
+## Create S3 Connection in Airflow Ui (Airflow Remote Logging)
 ```
 Connection Id: s3_default
 Connection Type: Amazon Web Services
@@ -42,7 +42,7 @@ AWS Secret Access Key: password
 Extra: {"endpoint_url": "http://minio.minio.svc.cluster.local:9000"}
 ```
 
-## Create kubernetes connection in Airflow ui
+## Create Kubernetes Connection in Airflow Ui
 
 ```
 Connection Id: kubernetes_default
@@ -55,7 +55,7 @@ Disable SSL: yes
 ```
 helm upgrade --install trino -n trino -f ./charts/trino/trino-values.yaml ./charts/trino --create-namespace --debug
 
-kubectl -n trino get po                                                                                                                     ─╯
+kubectl -n trino get po                                                                                                                    
 #NAME                                READY   STATUS    RESTARTS   AGE
 #trino-coordinator-6bfb99bf9-j7swp   1/1     Running   0          5m17s
 #trino-worker-6f8645fc67-76d54       1/1     Running   0          5m17s
