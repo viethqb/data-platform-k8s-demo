@@ -1,3 +1,8 @@
+## Create Kind (k8s) cluster
+```
+kind create cluster --name dev --config kind-config.yaml
+```
+
 ## Install hive metastore & minio & airflow
 ```
 helm upgrade --install metastore-db -n metastore -f ./charts/postgres/hive-metastore-postgres-values.yaml ./charts/postgres --create-namespace --debug
