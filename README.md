@@ -1,4 +1,4 @@
-## Create Kind (k8s) cluster
+## Create Kubernetes Local Cluster (Using Kind)
 ```
 kind create cluster --name dev --config kind-config.yaml
 ```
