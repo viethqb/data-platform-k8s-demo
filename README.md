@@ -108,14 +108,13 @@ with dataset(Feature_Area, Feature, Product, Status) as
      agg as (select Feature_Area, Feature, Product, avg(Status) as avg_col
              from dataset
              group by 1, 2, 3),
-     map_agg as (select Feature_Area, Feature, map_agg(Product, avg_col) as key
-from agg
-group by 1, 2)
+     map_agg as (select Feature_Area, Feature, map_agg(Product, avg_col) as key_1
+                 from agg
+                 group by 1, 2)
 SELECT Feature_Area,
        Feature,
-       element_at(KEY, 'App1') AS App1,
-       element_at(KEY, 'App2') AS App2,
-       element_at(KEY, 'App3') AS App3
+       element_at(key_1, 'App1') AS App1,
+       element_at(key_1, 'App2') AS App2,
+       element_at(key_1, 'App3') AS App3
 from map_agg
-
 ```
