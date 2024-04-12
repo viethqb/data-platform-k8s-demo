@@ -21,6 +21,7 @@ conf = (
     .set("spark.sql.catalog.lakehouse", "org.apache.iceberg.spark.SparkCatalog")
     .set("spark.sql.catalog.lakehouse.io-impl", "org.apache.iceberg.aws.s3.S3FileIO")
     .set("spark.sql.catalog.lakehouse.warehouse", "s3a://lakehouse/")
+    .set("spark.sql.catalog.lakehouse.s3.path-style-access", "true")
     .set(
         "spark.sql.catalog.lakehouse.s3.endpoint",
         "http://minio.minio.svc.cluster.local:9000",
@@ -65,38 +66,34 @@ def load_config(spark_context: SparkContext):
 
 load_config(spark.sparkContext)
 
-# Define schema for NYC Taxi Data
-schema = StructType(
-    [
-        StructField("VendorID", LongType(), True),
-        StructField("tpep_pickup_datetime", StringType(), True),
-        StructField("tpep_dropoff_datetime", StringType(), True),
-        StructField("passenger_count", DoubleType(), True),
-        StructField("trip_distance", DoubleType(), True),
-        StructField("RatecodeID", DoubleType(), True),
-        StructField("store_and_fwd_flag", StringType(), True),
-        StructField("PULocationID", LongType(), True),
-        StructField("DOLocationID", LongType(), True),
-        StructField("payment_type", LongType(), True),
-        StructField("fare_amount", DoubleType(), True),
-        StructField("extra", DoubleType(), True),
-        StructField("mta_tax", DoubleType(), True),
-        StructField("tip_amount", DoubleType(), True),
-        StructField("tolls_amount", DoubleType(), True),
-        StructField("improvement_surcharge", DoubleType(), True),
-        StructField("total_amount", DoubleType(), True),
-    ]
-)
+# # Define schema for NYC Taxi Data
+# schema = StructType(
+#     [
+#         StructField("VendorID", LongType(), True),
+#         StructField("tpep_pickup_datetime", StringType(), True),
+#         StructField("tpep_dropoff_datetime", StringType(), True),
+#         StructField("passenger_count", DoubleType(), True),
+#         StructField("trip_distance", DoubleType(), True),
+#         StructField("RatecodeID", DoubleType(), True),
+#         StructField("store_and_fwd_flag", StringType(), True),
+#         StructField("PULocationID", LongType(), True),
+#         StructField("DOLocationID", LongType(), True),
+#         StructField("payment_type", LongType(), True),
+#         StructField("fare_amount", DoubleType(), True),
+#         StructField("extra", DoubleType(), True),
+#         StructField("mta_tax", DoubleType(), True),
+#         StructField("tip_amount", DoubleType(), True),
+#         StructField("tolls_amount", DoubleType(), True),
+#         StructField("improvement_surcharge", DoubleType(), True),
+#         StructField("total_amount", DoubleType(), True),
+#     ]
+# )
 # Read CSV file from MinIO
-df = (
-    spark.read.option("header", "true")
-    .schema(schema)
-    .parquet(
-        "s3a://openlake/spark/sample-data/yellow_tripdata_2009-01.parquet",
-    )
+df = spark.read.option("header", "true").parquet(
+    "s3a://openlake/spark/sample-data/yellow_tripdata_2009-01.parquet",
 )
 
-create_schema_df = spark.sql("CREATE DATABASE nyc")
+create_schema_df = spark.sql("CREATE DATABASE IF NOT EXISTS nyc ")
 create_schema_df.show()
 # Create Iceberg table "nyc.taxis_large" from RDD
 df.write.mode("overwrite").saveAsTable("nyc.taxis_large")
@@ -104,123 +101,4 @@ df.write.mode("overwrite").saveAsTable("nyc.taxis_large")
 # Query table row count
 count_df = spark.sql("SELECT COUNT(*) AS cnt FROM nyc.taxis_large")
 total_rows_count = count_df.first().cnt
-logger.info(f"Total Rows for NYC Taxi Data: {total_rows_count}")
-
-# Rename column "fare_amount" in nyc.taxis_large to "fare"
-spark.sql("ALTER TABLE nyc.taxis_large RENAME COLUMN fare_amount TO fare")
-
-# Rename column "trip_distance" in nyc.taxis_large to "distance"
-spark.sql("ALTER TABLE nyc.taxis_large RENAME COLUMN trip_distance TO distance")
-
-# Add description to the new column "distance"
-spark.sql(
-    "ALTER TABLE nyc.taxis_large ALTER COLUMN distance COMMENT 'The elapsed trip distance in miles reported by the taximeter.'"
-)
-
-# Move "distance" next to "fare" column
-spark.sql("ALTER TABLE nyc.taxis_large ALTER COLUMN distance AFTER fare")
-
-# Add new column "fare_per_distance" of type float
-spark.sql(
-    "ALTER TABLE nyc.taxis_large ADD COLUMN fare_per_distance FLOAT AFTER distance"
-)
-
-# Check the snapshots available
-snap_df = spark.sql("SELECT * FROM nyc.taxis_large.snapshots")
-snap_df.show()  # prints all the available snapshots (1 till now)
-
-# Populate the new column "fare_per_distance"
-logger.info("Populating fare_per_distance column...")
-spark.sql("UPDATE nyc.taxis_large SET fare_per_distance = fare/distance")
-
-# Check the snapshots available
-logger.info("Checking snapshots...")
-snap_df = spark.sql("SELECT * FROM nyc.taxis_large.snapshots")
-snap_df.show()  # prints all the available snapshots (2 now) since previous operation will create a new snapshot
-
-# Qurey the table to see the results
-res_df = spark.sql(
-    """SELECT VendorID
-                            ,tpep_pickup_datetime
-                            ,tpep_dropoff_datetime
-                            ,fare
-                            ,distance
-                            ,fare_per_distance
-                            FROM nyc.taxis_large LIMIT 15"""
-)
-res_df.show()
-
-# Delete rows from "fare_per_distance" based on criteria
-logger.info("Deleting rows from fare_per_distance column...")
-spark.sql("DELETE FROM nyc.taxis_large WHERE fare_per_distance > 4.0 OR distance > 2.0")
-spark.sql("DELETE FROM nyc.taxis_large WHERE fare_per_distance IS NULL")
-
-# Check the snapshots available
-logger.info("Checking snapshots...")
-snap_df = spark.sql("SELECT * FROM nyc.taxis_large.snapshots")
-snap_df.show()  # prints all the available snapshots (4 now) since previous operations will create 2 new snapshots
-
-# Query table row count
-count_df = spark.sql("SELECT COUNT(*) AS cnt FROM nyc.taxis_large")
-total_rows_count = count_df.first().cnt
-logger.info(f"Total Rows for NYC Taxi Data after delete operations: {total_rows_count}")
-
-# Partition table based on "VendorID" column
-logger.info("Partitioning table based on VendorID column...")
-spark.sql("ALTER TABLE nyc.taxis_large ADD PARTITION FIELD VendorID")
-
-# Query Metadata tables like snapshot, files, history
-logger.info("Querying Snapshot table...")
-snapshots_df = spark.sql(
-    "SELECT * FROM nyc.taxis_large.snapshots ORDER BY committed_at"
-)
-snapshots_df.show()  # shows all the snapshots in ascending order of committed_at column
-
-logger.info("Querying Files table...")
-files_count_df = spark.sql("SELECT COUNT(*) AS cnt FROM nyc.taxis_large.files")
-total_files_count = files_count_df.first().cnt
-logger.info(f"Total Data Files for NYC Taxi Data: {total_files_count}")
-
-spark.sql(
-    """SELECT file_path, 
-                    file_format, 
-                    record_count, 
-                    null_value_counts, 
-                    lower_bounds, 
-                    upper_bounds 
-                    FROM nyc.taxis_large.files LIMIT 1"""
-).show()
-
-# Query history table
-logger.info("Querying History table...")
-hist_df = spark.sql("SELECT * FROM nyc.taxis_large.history")
-hist_df.show()
-
-# Time travel to initial snapshot
-logger.info("Time Travel to initial snapshot...")
-snap_df = spark.sql("SELECT snapshot_id FROM nyc.taxis_large.history LIMIT 1")
-spark.sql(
-    f"CALL demo.system.rollback_to_snapshot('nyc.taxis_large', {snap_df.first().snapshot_id})"
-)
-
-# Qurey the table to see the results
-res_df = spark.sql(
-    """SELECT VendorID
-                            ,tpep_pickup_datetime
-                            ,tpep_dropoff_datetime
-                            ,fare
-                            ,distance
-                            ,fare_per_distance
-                            FROM nyc.taxis_large LIMIT 15"""
-)
-res_df.show()
-
-# Query history table
-logger.info("Querying History table...")
-hist_df = spark.sql("SELECT * FROM nyc.taxis_large.history")
-hist_df.show()  # 1 new row
-
-# Query table row count
-count_df = spark.sql("SELECT COUNT(*) AS cnt FROM nyc.taxis_large")
-total_rows_count = count_df.first().cnt
-logger.info(f"Total Rows for NYC Taxi Data after time travel: {total_rows_count}")
+print(f"Total Rows for NYC Taxi Data: {total_rows_count}")
