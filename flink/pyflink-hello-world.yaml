@@ -1,0 +1,38 @@
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata:
+  name: pyflink-hello-world
+spec:
+  image: decodable-examples/pyflink-hello-world:latest
+  flinkVersion: v1_18
+  flinkConfiguration:
+    taskmanager.numberOfTaskSlots: "1"
+  serviceAccount: flink
+  podTemplate:
+    spec:
+      containers:
+        # Do not change the main container name
+        - name: flink-main-container
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              value: minio
+  jobManager:
+    resource:
+      memory: "2048m"
+      cpu: 1
+  taskManager:
+    resource:
+      memory: "2048m"
+      cpu: 1
+  job:
+    jarURI: local:///opt/flink/opt/flink-python-1.18.0.jar
+    entryClass: "org.apache.flink.client.python.PythonDriver"
+    args:
+      [
+        "-pyclientexec",
+        "/usr/bin/python3",
+        "-py",
+        "/opt/flink/usrlib/pyflink_hello_world.py",
+      ]
+    parallelism: 1
+    upgradeMode: stateless
