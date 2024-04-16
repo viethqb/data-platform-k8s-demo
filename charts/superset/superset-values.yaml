@@ -210,7 +210,7 @@ service:
 
 ingress:
   enabled: true
-  ingressClassName: ~
+  ingressClassName: "nginx"
   annotations:
     {}
     # kubernetes.io/tls-acme: "true"
