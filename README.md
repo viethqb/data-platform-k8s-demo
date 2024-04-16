@@ -123,7 +123,7 @@ from map_agg
  
 ```
 k create namespace argocd
-k apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+k apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/v2.10.5/manifests/install.yaml
 k -n argocd edit svc/argocd-server
 k -n argocd get svc
 k -n argocd get secrets argocd-initial-admin-secret --template={{.data.password}} | base64 -d
