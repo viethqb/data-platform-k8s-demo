@@ -118,3 +118,13 @@ SELECT Feature_Area,
        element_at(key_1, 'App3') AS App3
 from map_agg
 ```
+
+## Install ArgoCD
+ 
+
+```
+k create namespace argocd
+k apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+k -n argocd edit svc/argocd-server
+k -n argocd get svc
+```
