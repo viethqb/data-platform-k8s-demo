@@ -4,5 +4,5 @@ auth:
 ingress:
   enabled: true
   ingressClassName: "nginx"
-  hostname: minio-test.lakehouse.ggg.com.vn
+  hostname: minio.lakehouse.local
 defaultBuckets: lakehouse

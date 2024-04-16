@@ -16,7 +16,7 @@ ingress:
   enabled: ~
   web:
     # Enable web ingress resource
-    enabled: false
+    enabled: true
 
     # Annotations for the web Ingress
     annotations: {}
@@ -28,7 +28,7 @@ ingress:
     pathType: "ImplementationSpecific"
 
     # The hostname for the web Ingress (Deprecated - renamed to `ingress.web.hosts`)
-    host: ""
+    host: "airflow.lakehouse.local"
 
     # The hostnames or hosts configuration for the web Ingress
     hosts: []

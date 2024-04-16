@@ -221,7 +221,7 @@ ingress:
   path: /
   pathType: ImplementationSpecific
   hosts:
-    - superset.lakehouse.ggg.com.vn
+    - superset.lakehouse.local
   tls: []
   extraHostsRaw: []
   #  - secretName: chart-example-tls
@@ -662,7 +662,7 @@ init:
     firstname: Superset
     lastname: Admin
     email: admin@superset.com
-    password: dekesaP8UwlVucEcAHlD
+    password: admin@123
   # -- List of initContainers
   # @default -- a container waiting for postgres
   initContainers:
