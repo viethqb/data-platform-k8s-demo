@@ -20,12 +20,12 @@ additionalCatalogs:
     hive.s3.connect-timeout=3m
     hive.s3.socket-timeout=3m
     hive.non-managed-table-writes-enabled=true
-    hive.s3select-pushdown.enabled=true
     hive.storage-format=ORC
     hive.allow-drop-table=true
     hive.partition-projection-enabled=true
 ingress:
   enabled: true
+  className: "nginx"
   hosts:
     - host: trino.lakehouse.local
       paths:
