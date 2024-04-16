@@ -42,7 +42,7 @@ ingress:
     #     secretName: ""
 
     # The Ingress Class for the web Ingress (used only with Kubernetes v1.19 and above)
-    ingressClassName: ""
+    ingressClassName: "nginx"
 
     # configs for web Ingress TLS (Deprecated - renamed to `ingress.web.hosts[*].tls`)
     tls:

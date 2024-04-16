@@ -121,10 +121,22 @@ from map_agg
 
 ## Install ArgoCD
  
-
 ```
 k create namespace argocd
 k apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 k -n argocd edit svc/argocd-server
 k -n argocd get svc
+k -n argocd get secrets argocd-initial-admin-secret --template={{.data.password}} | base64 -d
+```
+
+## Install Ingress Nginx
+ 
+```
+k apply -f charts/nginx-ingess-deploy.yaml
+```
+
+## Install Metric Server
+ 
+```
+k apply -f charts/metric-server.yaml
 ```
