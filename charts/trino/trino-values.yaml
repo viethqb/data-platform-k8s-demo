@@ -16,7 +16,8 @@ additionalCatalogs:
     hive.s3.endpoint=http://minio.minio.svc.cluster.local:9000
     hive.s3.aws-access-key=admin
     hive.s3.aws-secret-key=password
-    hive.metastore-timeout=3m
+    hive.metastore.thrift.client.connect-timeout=3m
+    hive.metastore.thrift.client.read-timeout=3m
     hive.s3.connect-timeout=3m
     hive.s3.socket-timeout=3m
     hive.non-managed-table-writes-enabled=true
