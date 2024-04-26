@@ -12,28 +12,32 @@ RUN apt-get update -y && \
 RUN pip3 install apache-flink==1.18.1
 
 # Install Flink CDC
-ENV FLINK_CDC_VERSION = 3.0.1
-RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/com/ververica/flink-cdc-pipeline-connector-doris/3.0.1/flink-cdc-pipeline-connector-doris-3.0.1.jar
-RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/com/ververica/flink-cdc-pipeline-connector-mysql/3.0.1/flink-cdc-pipeline-connector-mysql-3.0.1.jar
-RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/com/ververica/flink-cdc-pipeline-connector-starrocks/3.0.1/flink-cdc-pipeline-connector-starrocks-3.0.1.jar
-RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/com/ververica/flink-cdc-pipeline-connector-values/3.0.1/flink-cdc-pipeline-connector-values-3.0.1.jar
-RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/com/ververica/flink-sql-connector-db2-cdc/3.0.1/flink-sql-connector-db2-cdc-3.0.1.jar
+# RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/com/ververica/flink-cdc-pipeline-connector-doris/3.0.1/flink-cdc-pipeline-connector-doris-3.0.1.jar
+# RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/com/ververica/flink-cdc-pipeline-connector-mysql/3.0.1/flink-cdc-pipeline-connector-mysql-3.0.1.jar
+# RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/com/ververica/flink-cdc-pipeline-connector-starrocks/3.0.1/flink-cdc-pipeline-connector-starrocks-3.0.1.jar
+# RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/com/ververica/flink-cdc-pipeline-connector-values/3.0.1/flink-cdc-pipeline-connector-values-3.0.1.jar
+# RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/com/ververica/flink-sql-connector-db2-cdc/3.0.1/flink-sql-connector-db2-cdc-3.0.1.jar
 RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/com/ververica/flink-sql-connector-mongodb-cdc/3.0.1/flink-sql-connector-mongodb-cdc-3.0.1.jar
 RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/com/ververica/flink-sql-connector-mysql-cdc/3.0.1/flink-sql-connector-mysql-cdc-3.0.1.jar
-RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/com/ververica/flink-sql-connector-oceanbase-cdc/3.0.1/flink-sql-connector-oceanbase-cdc-3.0.1.jar
+# RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/com/ververica/flink-sql-connector-oceanbase-cdc/3.0.1/flink-sql-connector-oceanbase-cdc-3.0.1.jar
 RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/com/ververica/flink-sql-connector-oracle-cdc/3.0.1/flink-sql-connector-oracle-cdc-3.0.1.jar
 RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/com/ververica/flink-sql-connector-postgres-cdc/3.0.1/flink-sql-connector-postgres-cdc-3.0.1.jar
-RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/com/ververica/flink-sql-connector-tidb-cdc/3.0.1/flink-sql-connector-tidb-cdc-3.0.1.jar
+#RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/com/ververica/flink-sql-connector-tidb-cdc/3.0.1/flink-sql-connector-tidb-cdc-3.0.1.jar
 RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/com/ververica/flink-sql-connector-sqlserver-cdc/3.0.1/flink-sql-connector-sqlserver-cdc-3.0.1.jar
-RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/com/ververica/flink-sql-connector-vitess-cdc/3.0.1/flink-sql-connector-vitess-cdc-3.0.1.jar
+#RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/com/ververica/flink-sql-connector-vitess-cdc/3.0.1/flink-sql-connector-vitess-cdc-3.0.1.jar
+
 RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/org/apache/flink/flink-sql-connector-kafka/3.1.0-1.18/flink-sql-connector-kafka-3.1.0-1.18.jar
 RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/org/apache/flink/flink-connector-jdbc/3.1.2-1.18/flink-connector-jdbc-3.1.2-1.18.jar
-RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/com/mysql/mysql-connector-j/8.3.0/mysql-connector-j-8.3.0.jar
+RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/mysql/mysql-connector-java/8.0.33/mysql-connector-java-8.0.33.jar
 RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.3/postgresql-42.7.3.jar
 
 # Install Flink Iceberg
 RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-flink-runtime-1.18/1.5.0/iceberg-flink-runtime-1.18-1.5.0.jar
-RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/org/apache/flink/flink-sql-connector-hive-2.3.9_2.12/1.18.1/flink-sql-connector-hive-2.3.9_2.12-1.18.1.jar
+RUN wget -P /opt/flink/lib RUN wget -P /opt/flink/lib https://repo.maven.apache.org/maven2/org/apache/flink/flink-sql-connector-hive-3.1.3_2.12/1.18.1/flink-sql-connector-hive-3.1.3_2.12-1.18.1.jar
 RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-common/2.8.3/hadoop-common-2.8.3.jar 
 RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/org/apache/flink/flink-shaded-hadoop-2-uber/2.8.3-10.0/flink-shaded-hadoop-2-uber-2.8.3-10.0.jar
 RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/software/amazon/awssdk/bundle/2.20.18/bundle-2.20.18.jar
+RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/org/apache/flink/flink-s3-fs-hadoop/1.19.0/flink-s3-fs-hadoop-1.19.0.jar
+RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-flink/1.5.0/iceberg-flink-1.5.0.jar
+RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.4.0/hadoop-aws-3.4.0.jar
+RUN wget -P /opt/flink/lib https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-s3/1.12.708/aws-java-sdk-s3-1.12.708.jar

@@ -14,40 +14,34 @@ def pyflink_hello_world():
 
     t_env.execute_sql(
         """
-   CREATE TABLE orders (
-     order_number BIGINT,
-     price        DECIMAL(32,2),
-     buyer        ROW,
-     order_time   TIMESTAMP(3)
-   ) WITH (
-     'connector' = 'datagen',
-     'rows-per-second' = '4'
-   )"""
+    CREATE TEMPORARY TABLE datagen(
+        id    BIGINT,
+        data  STRING
+    ) WITH (
+        'connector' = 'datagen'
+    );"""
     )
 
     t_env.execute_sql(
         """
-   create table orders_sink (
-     order_number BIGINT,
-     price        DECIMAL(32,2),
-     buyer        ROW,
-     order_time   TIMESTAMP(3)
-   ) with (
-    'connector'='iceberg',
-    'catalog-name'='iceberg_catalog', 
-    'catalog-type'='hive',
-    'uri'='thrift://hive-metastore.metastore.svc.cluster.local:9083', 
-    'warehouse'='s3a://lakehouse',
-    'format-version'='2',
-    's3.endpoint'='http://minio.minio.svc.cluster.local:9000',
-    'io-impl'='org.apache.iceberg.aws.s3.S3FileIO'
-   )"""
+    CREATE TEMPORARY TABLE dlf_iceberg (
+        id    BIGINT,
+        data  STRING
+    ) with (
+        'connector'='iceberg',
+        'catalog-name'='iceberg_catalog', 
+        'catalog-type'='hive',
+        'uri'='thrift://hive-metastore.metastore.svc.cluster.local:9083', 
+        'warehouse'='s3a://lakehouse',
+        'format-version'='2',
+        's3.endpoint'='http://10.96.113.214:9000',
+        'io-impl'='org.apache.iceberg.aws.s3.S3FileIO',
+        's3.path.style.access'='true',
+        's3.path-style'= 'true'
+    )"""
     )
 
-    t_env.execute_sql(
-        """
-       INSERT INTO orders_sink SELECT * FROM orders"""
-    )
+    t_env.execute_sql("INSERT INTO dlf_iceberg SELECT * FROM datagen;")
 
 
 if __name__ == "__main__":

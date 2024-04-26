@@ -6,7 +6,7 @@ spec:
   image: viet1846/flink-app:v1
   flinkVersion: v1_18
   flinkConfiguration:
-    taskmanager.numberOfTaskSlots: "1"
+    taskmanager.numberOfTaskSlots: "2"
   serviceAccount: flink
   jobManager:
     resource:
@@ -20,6 +20,7 @@ spec:
     spec:
       containers:
         - name: flink-main-container
+          imagePullPolicy: Always
           env:
             - name: AWS_ACCESS_KEY_ID
               value: "admin"
@@ -30,18 +31,12 @@ spec:
             - name: AWS_DEFAULT_REGION
               value: "us-east-1"
             - name: S3_ENDPOINT
-              value: "http://minio.minio.svc.cluster.local:9000"
+              value: "http://10.96.113.214:9000"
             - name: S3_PATH_STYLE_ACCESS
               value: "true"
   job:
     jarURI: local:///opt/flink/opt/flink-python-1.18.1.jar
     entryClass: "org.apache.flink.client.python.PythonDriver"
-    args:
-      [
-        "-pyclientexec",
-        "/usr/bin/python3",
-        "-py",
-        "/app/pyflink_hello_world.py",
-      ]
-    parallelism: 1
+    args: ["-pyclientexec", "/usr/bin/python3", "-py", "/app/python_demo.py"]
+    parallelism: 2
     upgradeMode: stateless
