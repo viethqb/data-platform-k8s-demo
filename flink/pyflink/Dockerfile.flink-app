@@ -1,0 +1,5 @@
+FROM viet1846/flink-iceberg:1.18.1-scala_2.12-base
+
+WORKDIR /app
+
+COPY python_demo.py .
