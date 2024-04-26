@@ -24,20 +24,23 @@ def pyflink_hello_world():
 
     t_env.execute_sql(
         """
-    CREATE TEMPORARY TABLE dlf_iceberg (
+    CREATE TEMPORARY TABLE test.dlf_iceberg (
         id    BIGINT,
         data  STRING
-    ) with (
+    ) (
         'connector'='iceberg',
-        'catalog-name'='iceberg_catalog', 
         'catalog-type'='hive',
-        'uri'='thrift://hive-metastore.metastore.svc.cluster.local:9083', 
-        'warehouse'='s3a://lakehouse',
+        'catalog-name'='iceberg_catalog',
+        'uri'='thrift://hive-metastore.metastore.svc.cluster.local:9083',  
+        'warehouse'='s3a://lakehouse', 
         'format-version'='2',
-        's3.endpoint'='http://10.96.113.214:9000',
-        'io-impl'='org.apache.iceberg.aws.s3.S3FileIO',
-        's3.path.style.access'='true',
-        's3.path-style'= 'true'
+        'write.upsert.enabled'='true',
+        'hadoop.fs.s3a.endpoint' = 'http://minio.minio.svc.cluster.local:9000' , 
+        'hadoop.fs.s3a.access.key' = 'admin' , 
+        'hadoop.fs.s3a.secret.key' = 'password', 
+        'hadoop.fs.s3a.connection.timeout' = '600000', 
+        'hadoop.fs.s3a.impl' = 'org.apache.hadoop.fs.s3a.S3AFileSystem', 
+        'hadoop.fs.s3a.path.style.access' = 'true'
     )"""
     )
 
