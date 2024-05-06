@@ -1,0 +1,11 @@
+apiVersion: v2
+appVersion: 1.5.1
+description: Doris-operator for doris creates, configures and manages doris cluster
+  running on kubernetes. Operator provide deploy and manage fe, be, cn，broker components.
+home: https://github.com/selectdb/doris-operator
+icon: https://charts.selectdb.com/images/selectdb.jpg
+name: doris-operator
+sources:
+- https://github.com/apache/doris
+type: application
+version: 1.5.1
