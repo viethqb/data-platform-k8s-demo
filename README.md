@@ -1,6 +1,6 @@
-## Architecture
+## Data Architecture
 
-![stack Overflow](./architecture.png)
+![Architecture](./architecture.png)
 
 
 ## Create Kubernetes Local Cluster (Using Kind)
