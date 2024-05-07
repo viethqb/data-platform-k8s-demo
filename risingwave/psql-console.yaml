@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: psql-console
+  namespace: risingwave
+spec:
+  containers:
+    - name: psql
+      image: postgres
+      imagePullPolicy: IfNotPresent
+      command:
+        - bash
+      args:
+        - -c
+        - while true; do sleep 10; done
+  enableServiceLinks: false
