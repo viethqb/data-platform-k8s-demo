@@ -1,0 +1,38 @@
+service:
+  ports:
+    client: 2379
+  peer: 2380
+
+replicaCount: 3
+
+resources:
+  limits:
+    cpu: 1
+    memory: 2Gi
+  requests:
+    cpu: 1
+    memory: 2Gi
+
+persistence:
+  # storageClass: default
+  size: 10Gi
+  accessModes: ["ReadWriteOnce"]
+
+auth:
+  rbac:
+    create: false
+    allowNoneAuthentication: true
+
+extraEnvVars:
+  - name: "ETCD_MAX_REQUEST_BYTES"
+    value: "104857600"
+  - name: "MAX_QUOTA_BACKEND_BYTES"
+    value: "8589934592"
+  - name: "ETCD_AUTO_COMPACTION_MODE"
+    value: "periodic"
+  - name: "ETCD_AUTO_COMPACTION_RETENTION"
+    value: "1m"
+  - name: "ETCD_SNAPSHOT_COUNT"
+    value: "10000"
+  - name: "ETCD_MAX_TXN_OPS"
+    value: "999999"

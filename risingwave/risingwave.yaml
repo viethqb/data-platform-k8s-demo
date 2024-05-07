@@ -1,0 +1,109 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: minio-credentials
+  namespace: risingwave
+stringData:
+  username: "admin"
+  password: "password"
+---
+apiVersion: risingwave.risingwavelabs.com/v1alpha1
+kind: RisingWave
+metadata:
+  name: risingwave
+  namespace: risingwave
+spec:
+  image: risingwavelabs/risingwave:v1.8.2
+  metaStore:
+    etcd:
+      endpoint: operator-etcd:2379
+  stateStore:
+    dataDirectory: hummock001
+    minio:
+      credentials:
+        secretName: minio-credentials
+      bucket: risingwave
+      endpoint: minio.minio.svc.cluster.local:9000
+  components:
+    meta:
+      nodeGroups:
+        - replicas: 1
+          name: ""
+          template:
+            spec:
+              volumes:
+                - name: heap
+                  emptyDir:
+                    sizeLimit: 1Gi
+              volumeMounts:
+                - mountPath: /heap
+                  name: heap
+              env:
+                - name: MALLOC_CONF
+                  value: prof:true,lg_prof_interval=-1,lg_prof_sample=20,prof_prefix:/heap/
+                - name: RW_HEAP_PROFILING_DIR
+                  value: /heap
+              resources:
+                limits:
+                  cpu: 1
+                  memory: 2Gi
+                requests:
+                  cpu: 1
+                  memory: 2Gi
+    compactor:
+      nodeGroups:
+        - replicas: 1
+          name: ""
+          template:
+            spec:
+              volumes:
+                - name: heap
+                  emptyDir:
+                    sizeLimit: 1Gi
+              volumeMounts:
+                - mountPath: /heap
+                  name: heap
+              env:
+                - name: MALLOC_CONF
+                  value: prof:true,lg_prof_interval=-1,lg_prof_sample=20,prof_prefix:/heap/
+                - name: RW_HEAP_PROFILING_DIR
+                  value: /heap
+    frontend:
+      nodeGroups:
+        - replicas: 1
+          name: ""
+          template:
+            spec:
+              resources:
+                limits:
+                  cpu: 1
+                  memory: 2Gi
+                requests:
+                  cpu: 1
+                  memory: 2Gi
+    compute:
+      nodeGroups:
+        - replicas: 1
+          name: ""
+          template:
+            spec:
+              volumes:
+                - name: heap
+                  emptyDir:
+                    sizeLimit: 1Gi
+              volumeMounts:
+                - mountPath: /heap
+                  name: heap
+              env:
+                - name: MALLOC_CONF
+                  value: prof:true,lg_prof_interval=-1,lg_prof_sample=20,prof_prefix:/heap/
+                - name: RW_HEAP_PROFILING_DIR
+                  value: /heap
+              resources:
+                limits:
+                  cpu: 2
+                  memory: 4Gi # Memory limit will be set to `RW_TOTAL_MEMORY_BYTES`
+                requests:
+                  cpu: 2
+                  memory: 4Gi
