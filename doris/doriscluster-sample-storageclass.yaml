@@ -16,6 +16,15 @@ spec:
   feSpec:
     replicas: 1
     image: selectdb/doris.fe-ubuntu:2.1.1
+    service:
+      type: NodePort
+      servicePorts:
+        - nodePort: 31001
+          targetPort: 8030
+        - nodePort: 31002
+          targetPort: 8040
+        - nodePort: 31003
+          targetPort: 9030
     limits:
       cpu: 2
       memory: 4Gi
