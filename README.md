@@ -7,6 +7,27 @@
 ```
 kind create cluster --name dev --config kind-config.yaml
 ```
+## Install ArgoCD
+ 
+```
+k create namespace argocd
+k apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/v2.10.5/manifests/install.yaml
+k -n argocd edit svc/argocd-server
+k -n argocd get svc
+k -n argocd get secrets argocd-initial-admin-secret --template={{.data.password}} | base64 -d
+```
+
+## Install Ingress Nginx
+ 
+```
+k apply -f charts/nginx-ingess-deploy.yaml
+```
+
+## Install Metric Server
+ 
+```
+k apply -f charts/metric-server.yaml
+```
 
 ## Install Minio
 ```
@@ -146,24 +167,58 @@ mysql> CREATE CATALOG iceberg PROPERTIES (
 mysql> select vendor_name, trip_pickup_datetime from iceberg.nyc.taxis_large limit 10;
 ```
 
-## Install ArgoCD
- 
-```
-k create namespace argocd
-k apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/v2.10.5/manifests/install.yaml
-k -n argocd edit svc/argocd-server
-k -n argocd get svc
-k -n argocd get secrets argocd-initial-admin-secret --template={{.data.password}} | base64 -d
-```
+## Install Apache Risingwave
 
-## Install Ingress Nginx
- 
 ```
-k apply -f charts/nginx-ingess-deploy.yaml
-```
+kubectl create -f https://github.com/jetstack/cert-manager/releases/download/v1.8.2/cert-manager.yaml
+kubectl apply --server-side -f ./risingwave/risingwave-operator.yaml
+helm upgrade --install operator -f ./risingwave/etcd-values.yaml ./charts/etcd --namespace risingwave --create-namespace --debug
+k apply -f ./risingwave/risingwave.yaml
 
-## Install Metric Server
- 
-```
-k apply -f charts/metric-server.yaml
+k run mysql-client --image=mysql:5.7 -it --rm --restart=Never --namespace=doris -- /bin/bash
+mysql -uroot -P9030 -hdoriscluster-sample-storageclass1-fe-service
+mysql> create table demo.demo_bhv_table(
+	seq_id bigint, 
+    user_id bigint,
+    user_name varchar
+)
+DISTRIBUTED BY HASH(user_id) BUCKETS 32;
+
+kubectl apply -f ../risingwave/psql-console.yaml
+kubectl -n risingwave exec -it psql-console -- bash
+psql -h risingwave-frontend -p 4567 -d dev -U root
+
+dev=> ALTER USER root WITH PASSWORD '12345678';
+dev=> CREATE SOURCE s1_source (
+     seq_id bigint, 
+     user_id bigint,
+     user_name varchar)
+WITH (                    
+     connector = 'datagen',
+     fields.seq_id.kind = 'sequence',
+     fields.seq_id.start = '1',
+     fields.seq_id.end = '10000000',
+     fields.user_id.kind = 'random',
+     fields.user_id.min = '1',
+     fields.user_id.max = '10000000',
+     fields.user_name.kind = 'random',
+     fields.user_name.length = '10',
+     datagen.rows.per.second = '100'
+ ) FORMAT PLAIN ENCODE JSON;
+dev=> CREATE SINK doris_sink FROM s1_source
+WITH (
+    connector = 'doris',
+    type = 'append-only',
+    doris.url = 'http://doriscluster-sample-storageclass1-fe-service.doris:8030',
+    doris.user = 'root',
+    doris.password = '12345678',
+    doris.database = 'demo',
+    doris.table='demo_bhv_table',
+    force_append_only='true'
+);
+
+
+k run mysql-client --image=mysql:5.7 -it --rm --restart=Never --namespace=doris -- /bin/bash
+mysql -uroot -P9030 -hdoriscluster-sample-storageclass1-fe-service
+mysql> select count(1) from demo.demo_bhv_table;
 ```
