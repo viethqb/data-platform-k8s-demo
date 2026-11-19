@@ -59,7 +59,9 @@ flowchart TB
 - **Theo tutorial** (khuyến nghị lần đầu): làm từng bước 1 → 15, kiểm tra xong
   mới sang bước sau. Mỗi bước app chỉ là một lệnh `./scripts/apply-app.sh <app>`.
 - **Một lệnh**: `ENV=uat ./scripts/bootstrap.sh` làm toàn bộ các bước trên.
-  Script tự chạy `vault-setup.sh` và tạo Application `root` để bật mọi app.
+  Script tự chạy `vault-setup.sh` và tạo Application `root`. Root cài app theo
+  **wave** đúng thứ tự trong bảng trên, đợi wave trước Healthy rồi mới sang
+  wave sau (xem [bước 6](06-argocd.md#wave-cài-lần-lượt-không-cài-dồn)).
 
 ## Mục lục
 

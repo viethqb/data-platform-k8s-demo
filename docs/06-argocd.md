@@ -66,6 +66,46 @@ values/common/<app>.yaml  ->  environments/uat/values/<app>.yaml
 và có `automated: { prune, selfHeal }` cùng `retry`, nên app khởi động khi DB
 hoặc secret chưa sẵn sàng sẽ tự sync lại.
 
+### Wave: cài lần lượt, không cài dồn
+
+Khi bật tất cả bằng root app, `wave` quyết định thứ tự:
+
+| Wave | App |
+|---|---|
+| -3 | ingress-nginx, argocd |
+| -2 | vault, external-secrets, cloudnative-pg |
+| -1 | platform-secrets |
+| 0 | postgres |
+| 1 | silo, lakekeeper |
+| 2 | metabase |
+| 3 | airflow |
+| 4 | ranger |
+
+Mặc định Argo CD **không** đợi Application con Healthy mới sang wave sau, vì
+nó không đánh giá health của kiểu `Application`. Khi image đã preload, mọi app
+khởi động cùng lúc và làm nghẽn CPU của node: probe timeout, pod restart, thậm
+chí `kube-scheduler` cũng crash. `values/common/argocd.yaml` thêm health check
+cho `Application` để root đợi từng wave:
+
+```yaml
+configs:
+  cm:
+    resource.customizations.health.argoproj.io_Application: |
+      hs = {}
+      hs.status = "Progressing"
+      hs.message = ""
+      if obj.status ~= nil and obj.status.health ~= nil then
+        hs.status = obj.status.health.status
+        if obj.status.health.message ~= nil then
+          hs.message = obj.status.health.message
+        end
+      end
+      return hs
+```
+
+Các app nặng (Metabase, Airflow, Ranger) được tách mỗi app một wave. Khi đi
+theo tutorial, bạn cài từng app bằng tay nên tự nhiên đã là tuần tự.
+
 ## 6.4 Giao ingress-nginx và Argo CD cho Argo CD quản lý
 
 `scripts/apply-app.sh <app>` render đúng một Application rồi apply:

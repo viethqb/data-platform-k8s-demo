@@ -2,7 +2,8 @@
 # Bootstrap one environment end to end (the tutorial in docs/ does the same
 # steps one at a time):
 #   1. kind cluster                   environments/<env>/kind-cluster.yaml
-#   2. preload images                 scripts/preload-images.sh  (PRELOAD_IMAGES=0 to skip)
+#   2. image cache                    scripts/registry-cache.sh  (pull-through mirrors, default)
+#                                     or scripts/preload-images.sh (kind load, PRELOAD_IMAGES=1)
 #   3. TLS certificate                scripts/tls.sh
 #   4. namespaces
 #   5. ingress-nginx + Argo CD        Helm, from charts/ (Argo CD adopts both later)
@@ -13,7 +14,8 @@
 #   REVISION=<branch|tag|sha>  Git revision Argo CD syncs (default: main)
 #   GITHUB_TOKEN=...           only needed if the repo is private
 #   HELM_TIMEOUT=20m           helm --wait timeout
-#   PRELOAD_IMAGES=0           pull from registries inside kind instead of kind load
+#   REGISTRY_CACHE=0           do not use the local pull-through registry caches
+#   PRELOAD_IMAGES=1           also kind-load every image (slow on Docker Desktop)
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 SCRIPTS="${ROOT_DIR}/scripts"
@@ -42,8 +44,12 @@ else
   kind create cluster --config "${ENV_DIR}/kind-cluster.yaml"
 fi
 
-if [ "${PRELOAD_IMAGES:-1}" != "0" ]; then
-  log "2. preload images"
+if [ "${REGISTRY_CACHE:-1}" != "0" ]; then
+  log "2. registry cache"
+  "${SCRIPTS}/registry-cache.sh"
+fi
+if [ "${PRELOAD_IMAGES:-0}" = "1" ]; then
+  log "2b. preload images (kind load)"
   "${SCRIPTS}/preload-images.sh"
 fi
 

@@ -86,6 +86,23 @@ vault_cmd "vault write auth/kubernetes/role/${ESO_SA} \
   policies=platform-read ttl=1h >/dev/null"
 echo "kv-v2 secret/, auth kubernetes, policy platform-read, role ${ESO_SA}"
 
+# Human login for the UI: userpass user "admin". The UI deliberately does not
+# keep a root token across page reloads, so day-to-day use goes through this.
+ADMIN_PW="$(secret_value "${NS}" vault-init admin-password)"
+if [ -z "${ADMIN_PW}" ]; then
+  ADMIN_PW="$(rand 12)"
+  kc -n "${NS}" patch secret vault-init --type merge \
+    -p "{\"stringData\":{\"admin-password\":\"${ADMIN_PW}\"}}" >/dev/null
+fi
+vault_cmd 'vault auth list -format=json | grep -q "\"userpass/\"" || vault auth enable userpass'
+vault_cmd 'vault policy write admin - >/dev/null <<EOF
+path "*" { capabilities = ["create", "read", "update", "delete", "list", "sudo"] }
+EOF'
+printf '%s\n%s\n' "${ROOT_TOKEN}" "${ADMIN_PW}" | kc -n "${NS}" exec -i "${POD}" -- sh -c '
+  read -r VAULT_TOKEN; export VAULT_TOKEN; read -r pw
+  vault write auth/userpass/users/admin password="$pw" token_policies=admin >/dev/null'
+echo "userpass user admin (policy admin)"
+
 log "seed secret/platform/*"
 # seed <path> <key=value>...   (only when the path does not exist yet)
 seed() {
@@ -121,4 +138,5 @@ seed platform/ranger "admin-password=Rgr$(rand 6)1"
 seed platform/silo "root-user=admin" "root-password=$(rand)"
 
 echo
-echo "Vault UI: ${BASE_URL}/ui   (token: kubectl -n ${NS} get secret vault-init -o jsonpath='{.data.root-token}' | base64 -d)"
+echo "Vault UI: ${BASE_URL}/ui  ->  method Username, user admin, password:"
+echo "  kubectl -n ${NS} get secret vault-init -o jsonpath='{.data.admin-password}' | base64 -d"

@@ -17,7 +17,7 @@ Environment: ${ENV} (context ${CONTEXT})
 App          URL                                              Login
 -----------  -----------------------------------------------  ------------------------------
 Argo CD      ${BASE_URL}/argocd          admin / $(sv argocd argocd-initial-admin-secret password)
-Vault        ${BASE_URL}/ui              token: $(sv vault vault-init root-token)
+Vault        ${BASE_URL}/ui              admin / $(sv vault vault-init admin-password)   (Username method)
 Airflow      ${BASE_URL}/airflow/        admin / $(sv airflow airflow-admin password)
 Metabase     ${BASE_URL}/metabase/       (create admin on first visit)
 Lakekeeper   ${BASE_URL}/lakekeeper/ui/  (no auth)

@@ -46,6 +46,7 @@ tra tab Network không có request 404 nào tới asset.
 | Webhook `mcluster.cnpg.io` refused | CNPG operator chưa sẵn sàng, chờ retry | [9](09-postgres.md) |
 | Push bản sửa nhưng app không đổi | Argo CD đang retry revision cũ: Terminate rồi sync lại | [6](06-argocd.md) |
 | Airflow api-server CrashLoop | Startup probe quá ngắn | [12](12-airflow.md) |
+| Nhiều pod restart cùng lúc, `kube-scheduler` restart, probe `context deadline exceeded` | Node nghẽn CPU vì nhiều app khởi động cùng lúc | [6](06-argocd.md#wave-cài-lần-lượt-không-cài-dồn) |
 | Ranger restart liên tục | Lock đổi mật khẩu bị kẹt | [14](14-ranger.md) |
 
 Xem nhanh:

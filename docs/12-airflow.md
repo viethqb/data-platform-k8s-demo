@@ -52,6 +52,7 @@ createUserJob:
 | `createUserJob/migrateDatabaseJob.useHelmHooks: false` | Argo CD không chạy Helm hook giống Helm |
 | `apiServer.startupProbe.failureThreshold: 30` | Airflow 3 mất 60-90s mới listen; probe mặc định chỉ chờ 60s nên pod bị CrashLoop |
 | `env: AIRFLOW__CORE__LOAD_EXAMPLES=True` | Image set sẵn env `=false`, và env đè lên `airflow.cfg` |
+| `scheduler/triggerer/dagProcessor` probe `timeoutSeconds: 60` | Probe chạy `airflow jobs check`, mỗi lần khởi động một tiến trình Python (khoảng 15s CPU). Khi máy tải nặng, timeout mặc định 20s bị vượt, pod restart và càng làm máy tải nặng hơn |
 
 ## Checkpoint
 
