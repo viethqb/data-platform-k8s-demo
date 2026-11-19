@@ -62,4 +62,7 @@ docker ps --format '{{.Names}}\t{{.Ports}}' | grep data-platform-uat
 # ... 127.0.0.1:80->80/tcp, 127.0.0.1:443->443/tcp ...
 ```
 
-Tiếp theo: [3. Preload image](03-preload-images.md)
+`containerdConfigPatches` trong file cấu hình bật `config_path` cho containerd,
+để bước 3 trỏ node vào registry cache.
+
+Tiếp theo: [3. Cache image](03-preload-images.md)

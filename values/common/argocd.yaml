@@ -27,3 +27,10 @@ dex:
 
 notifications:
   enabled: false
+
+# Same official image as the chart default (ecr-public.aws.com/docker/library/redis),
+# but from Docker Hub so it goes through the docker.io pull-through cache
+# (the ECR Public endpoint rejects anonymous proxy pulls).
+redis:
+  image:
+    repository: docker.io/library/redis

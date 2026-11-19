@@ -7,6 +7,9 @@ vault:
   auth:
     mountPath: kubernetes
     role: external-secrets
+    # -- Audience of the ServiceAccount token ESO requests; must match the
+    # Vault role's `audience` (scripts/vault-setup.sh).
+    audience: vault
     serviceAccount:
       name: external-secrets
       namespace: external-secrets

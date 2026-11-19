@@ -17,7 +17,8 @@ environments/<env>/
   values/<app>.yaml      override riêng (host, URL, dung lượng...)
 scripts/
   bootstrap.sh           toàn bộ tutorial trong một lệnh
-  preload-images.sh      kéo image về máy + kind load
+  registry-cache.sh      registry proxy cache cạnh kind + mirror cho containerd
+  preload-images.sh      (tuỳ chọn) kéo image về máy + kind load
   tls.sh                 cert mkcert -> secret ingress-nginx/platform-tls
   apply-app.sh           tạo Application cho một app (--wait để chờ)
   vault-setup.sh         init / unseal / cấu hình / seed Vault
@@ -45,7 +46,7 @@ Nâng version: sửa trong `scripts/vendor-charts.sh`, rồi chạy:
 ./scripts/vendor-charts.sh <chart>
 git diff --stat charts/<chart>
 ENV=uat ./scripts/render.sh
-ENV=uat ./scripts/preload-images.sh --list     # xem image mới
+ENV=uat ./scripts/preload-images.sh --list     # xem image mới (registry cache tự lấy image mới khi pull)
 ```
 
 ## Values được ghép thế nào

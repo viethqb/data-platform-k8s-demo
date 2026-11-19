@@ -23,7 +23,7 @@ Mỗi tầng chỉ cài được khi tầng bên dưới đã chạy:
 ```mermaid
 flowchart TB
   A["1. Chuẩn bị máy<br/>docker, kind, kubectl, helm, mkcert"] --> B["2. kind cluster<br/>port 80/443"]
-  B --> C["3. Preload image<br/>kind load"]
+  B --> C["3. Cache image<br/>registry mirror"]
   B --> D["4. TLS cert<br/>mkcert"]
   C --> E
   D --> E["5. ingress-nginx<br/>1 domain, nhiều path"]
@@ -45,7 +45,7 @@ flowchart TB
 |---|---|---|---|
 | 1 | Công cụ trên máy | - | |
 | 2 | kind cluster | Docker | Port 80/443 chỉ map được lúc tạo cluster |
-| 3 | Preload image | cluster | Kéo image một lần trên máy, các lần dựng lại không phải tải lại |
+| 3 | Cache image | cluster | Registry cache cạnh kind: dựng lại cluster không phải tải lại image từ internet |
 | 4 | TLS cert | cluster | ingress-nginx cần cert ngay khi khởi động |
 | 5 | ingress-nginx | cert | Mọi UI (kể cả Argo CD) đi qua ingress |
 | 6 | Argo CD | ingress | Từ đây mọi app được cài từ Git |
@@ -69,7 +69,7 @@ flowchart TB
 |---|---|
 | 1 | [Chuẩn bị máy](01-prerequisites.md) |
 | 2 | [Tạo kind cluster](02-kind-cluster.md) |
-| 3 | [Preload image với kind load](03-preload-images.md) |
+| 3 | [Cache image để pull nhanh](03-preload-images.md) |
 | 4 | [TLS cert với mkcert](04-tls.md) |
 | 5 | [ingress-nginx](05-ingress-nginx.md) |
 | 6 | [Argo CD + app-of-apps](06-argocd.md) |

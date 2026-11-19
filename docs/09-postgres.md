@@ -33,7 +33,7 @@ Với mỗi `name`, chart tạo một managed role có mật khẩu đọc từ 
 `pg-role-<name>` (cũng do bước 8 tạo), và một `Database` mà role đó làm owner.
 Image Postgres được pin trong `charts/postgres-cluster/values.yaml`
 (`imageName: ghcr.io/cloudnative-pg/postgresql:18.7-system-trixie`), nên cũng
-nằm trong danh sách preload ở bước 3.
+nằm trong danh sách image của bước 3.
 
 Thêm app mới cần DB thì làm ba việc: thêm `- name: <app>` vào `databases`,
 seed `secret/platform/postgres/<app>` trong Vault, và thêm ExternalSecret

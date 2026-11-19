@@ -82,7 +82,7 @@ Khi bật tất cả bằng root app, `wave` quyết định thứ tự:
 | 4 | ranger |
 
 Mặc định Argo CD **không** đợi Application con Healthy mới sang wave sau, vì
-nó không đánh giá health của kiểu `Application`. Khi image đã preload, mọi app
+nó không đánh giá health của kiểu `Application`. Khi image có sẵn trong cache, mọi app
 khởi động cùng lúc và làm nghẽn CPU của node: probe timeout, pod restart, thậm
 chí `kube-scheduler` cũng crash. `values/common/argocd.yaml` thêm health check
 cho `Application` để root đợi từng wave:

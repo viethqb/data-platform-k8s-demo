@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Pull-through registry caches for kind.
+# Pull-through registry caches for kind (docker.io, quay.io, ghcr.io, registry.k8s.io).
 #
 # One registry:3 container per upstream registry runs next to the kind node on
 # the "kind" Docker network, with its storage in a Docker volume. containerd in
@@ -21,13 +21,12 @@ dockerio|docker.io|https://registry-1.docker.io
 quay|quay.io|https://quay.io
 ghcr|ghcr.io|https://ghcr.io
 k8s|registry.k8s.io|https://registry.k8s.io
-ecr-public|ecr-public.aws.com|https://ecr-public.aws.com
 "
 
 case "${1:-}" in
   --status)
     docker ps -a --filter name=kind-registry- --format '{{.Names}}\t{{.Status}}'
-    docker system df -v 2>/dev/null | awk '/kind-registry-/ {print "  volume " $1 "\t" $NF}'
+    docker system df -v 2>/dev/null | awk '$1 ~ /^kind-registry-/ {print "  volume " $1 "\t" $NF}'
     exit 0 ;;
   --delete)
     while IFS='|' read -r name _ _; do

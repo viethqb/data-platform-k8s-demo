@@ -57,7 +57,7 @@ flowchart LR
 Làm theo **tutorial**: [docs/00-overview.md](docs/00-overview.md). Tutorial
 cài từng thành phần theo đúng thứ tự phụ thuộc, có checkpoint sau mỗi bước:
 
-1. Chuẩn bị máy → 2. kind cluster → 3. Preload image (`kind load`) → 4. TLS
+1. Chuẩn bị máy → 2. kind cluster → 3. Cache image (registry mirror) → 4. TLS
    (mkcert) → 5. ingress-nginx → 6. Argo CD → 7. Vault → 8. External Secrets →
    9. PostgreSQL → 10-14. Silo, Lakekeeper, Airflow, Metabase, Ranger → 15. Kiểm tra
 
@@ -78,7 +78,7 @@ charts/                   chart upstream (vendor, pin version) + chart local
   platform-secrets/       ClusterSecretStore (Vault) + ExternalSecret cho mọi secret
 values/common/            values dùng chung
 environments/uat/         env.sh, kind-cluster.yaml, platform-apps.yaml, values/<app>.yaml
-scripts/                  bootstrap, preload-images, tls, apply-app, vault-setup, render, ...
+scripts/                  bootstrap, registry-cache, tls, apply-app, vault-setup, render, ...
 docs/                     tutorial từng bước + tham khảo
 ```
 

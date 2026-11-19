@@ -83,7 +83,7 @@ path "secret/metadata/platform/*" { capabilities = ["read", "list"] }
 EOF'
 vault_cmd "vault write auth/kubernetes/role/${ESO_SA} \
   bound_service_account_names=${ESO_SA} bound_service_account_namespaces=${ESO_NS} \
-  policies=platform-read ttl=1h >/dev/null"
+  audience=vault policies=platform-read ttl=1h >/dev/null"
 echo "kv-v2 secret/, auth kubernetes, policy platform-read, role ${ESO_SA}"
 
 # Human login for the UI: userpass user "admin". The UI deliberately does not

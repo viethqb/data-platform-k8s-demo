@@ -49,7 +49,7 @@ server:
 ENV=uat ./scripts/vault-setup.sh
 ```
 
-Script idempotent (chạy lại bao nhiêu lần cũng được) và làm 4 việc:
+Script idempotent (chạy lại bao nhiêu lần cũng được) và làm các việc sau:
 
 | Việc | Lệnh Vault tương ứng |
 |---|---|
@@ -57,6 +57,7 @@ Script idempotent (chạy lại bao nhiêu lần cũng được) và làm 4 vi�
 | Unseal | `vault operator unseal <key>` |
 | Bật KV v2 + Kubernetes auth | `vault secrets enable -path=secret kv-v2`, `vault auth enable kubernetes` |
 | Policy + role cho External Secrets | policy `platform-read` (đọc `secret/data/platform/*`), role `external-secrets` gắn với ServiceAccount `external-secrets/external-secrets` |
+| User đăng nhập UI | bật `userpass`, policy `admin`, user `admin` (mật khẩu ngẫu nhiên, lưu ở `vault/vault-init` → `admin-password`) |
 | Seed secret | sinh giá trị ngẫu nhiên cho `secret/platform/*` nếu chưa có |
 
 Cây secret sau khi seed:
@@ -94,12 +95,16 @@ kubectl -n vault exec vault-0 -- vault status | grep -E 'Initialized|Sealed'
 # Sealed          false
 ```
 
-Mở <https://data-uat.127.0.0.1.nip.io/ui>, chọn method **Token** và dán root
-token:
+Mở <https://data-uat.127.0.0.1.nip.io/ui>, chọn method **Username**, user
+`admin`, mật khẩu:
 
 ```bash
-kubectl -n vault get secret vault-init -o jsonpath='{.data.root-token}' | base64 -d; echo
+kubectl -n vault get secret vault-init -o jsonpath='{.data.admin-password}' | base64 -d; echo
 ```
+
+Đừng dùng root token cho việc hằng ngày. Vault UI cố ý **không lưu root token**
+trong trình duyệt, nên mỗi lần tải lại trang là phải đăng nhập lại; user
+`admin` thì giữ được session.
 
 Vào **Secrets → secret → platform** sẽ thấy cây secret ở trên.
 

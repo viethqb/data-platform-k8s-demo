@@ -39,7 +39,7 @@ tra tab Network không có request 404 nào tới asset.
 |---|---|---|
 | Trình duyệt báo "Not secure" | Chưa chạy `mkcert -install` | [1](01-prerequisites.md) |
 | `kind create` lỗi `address already in use` | Port 80/443 bị chiếm | [1](01-prerequisites.md) |
-| Pod `ImagePullBackOff` / kéo image rất lâu | Chưa preload, hoặc image trỏ theo digest | [3](03-preload-images.md) |
+| Pod `ImagePullBackOff` / kéo image rất lâu | Registry cache chưa chạy (`registry-cache.sh --status`), hoặc cluster tạo thiếu `config_path` | [3](03-preload-images.md) |
 | UI trắng trang, JS 404 | Thiếu `basehref`/`base_url`/`MB_SITE_URL`, hoặc strip prefix sai nhóm | [5](05-ingress-nginx.md) |
 | App `Degraded`, pod báo thiếu secret | Vault sealed, hoặc ExternalSecret chưa sync | [7](07-vault.md), [8](08-external-secrets.md) |
 | `ClusterSecretStore` không `Valid` | Chưa chạy `vault-setup.sh` | [8](08-external-secrets.md) |
@@ -71,8 +71,8 @@ ENV=uat ./scripts/vault-setup.sh
 ENV=uat ./scripts/destroy.sh
 ```
 
-Dựng lại từ đầu thì nhanh, vì image đã có trong Docker trên máy
-([bước 3](03-preload-images.md)):
+Dựng lại từ đầu thì nhanh, vì image đã nằm trong registry cache (cache không
+bị xoá cùng cluster, xem [bước 3](03-preload-images.md)):
 
 ```bash
 ENV=uat ./scripts/bootstrap.sh
