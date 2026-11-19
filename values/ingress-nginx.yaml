@@ -1,0 +1,37 @@
+# ingress-nginx for kind: listen on 8080/8443 (hostPort) on the node labelled
+# ingress-ready. Listening on the same port as the browser URL keeps
+# X-Forwarded-Port correct, which Airflow/FAB and Lakekeeper use for redirects.
+controller:
+  containerPort:
+    http: 8080
+    https: 8443
+  hostPort:
+    enabled: true
+    ports:
+      http: 8080
+      https: 8443
+  nodeSelector:
+    ingress-ready: "true"
+    kubernetes.io/os: linux
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Equal
+      effect: NoSchedule
+  service:
+    type: NodePort
+  publishService:
+    enabled: false
+  extraArgs:
+    publish-status-address: localhost
+    http-port: "8080"
+    https-port: "8443"
+  ingressClassResource:
+    name: nginx
+    default: true
+  watchIngressWithoutClass: true
+  config:
+    # Large uploads (Silo console, Metabase CSV upload).
+    proxy-body-size: "0"
+  admissionWebhooks:
+    # Default 8443 would clash with the HTTPS listener above.
+    port: 9443

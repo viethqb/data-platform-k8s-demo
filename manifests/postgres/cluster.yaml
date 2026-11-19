@@ -1,0 +1,36 @@
+# Shared PostgreSQL for the platform metadata stores.
+# Role passwords come from secrets created by scripts/bootstrap.sh (never committed).
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pg
+  namespace: postgres
+spec:
+  instances: 1
+  storage:
+    size: 5Gi
+  enableSuperuserAccess: true
+  superuserSecret:
+    name: pg-superuser
+  managed:
+    roles:
+      - name: lakekeeper
+        ensure: present
+        login: true
+        passwordSecret:
+          name: pg-role-lakekeeper
+      - name: airflow
+        ensure: present
+        login: true
+        passwordSecret:
+          name: pg-role-airflow
+      - name: metabase
+        ensure: present
+        login: true
+        passwordSecret:
+          name: pg-role-metabase
+      - name: ranger
+        ensure: present
+        login: true
+        passwordSecret:
+          name: pg-role-ranger

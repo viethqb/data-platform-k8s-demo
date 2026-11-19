@@ -1,0 +1,118 @@
+# Silo (community MinIO fork, https://silo.pigsty.io) - single node.
+# S3 API stays internal:  http://silo.silo.svc:9000
+# Console is published:   http://data.127.0.0.1.nip.io:8080/silo/
+apiVersion: v1
+kind: Service
+metadata:
+  name: silo
+  namespace: silo
+spec:
+  selector:
+    app: silo
+  ports:
+    - name: s3
+      port: 9000
+      targetPort: s3
+    - name: console
+      port: 9001
+      targetPort: console
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: silo-headless
+  namespace: silo
+spec:
+  clusterIP: None
+  selector:
+    app: silo
+  ports:
+    - name: s3
+      port: 9000
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: silo
+  namespace: silo
+spec:
+  serviceName: silo-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      app: silo
+  template:
+    metadata:
+      labels:
+        app: silo
+    spec:
+      containers:
+        - name: silo
+          image: docker.io/pgsty/silo:RELEASE.2026-11-12T00-00-00Z
+          args: ["server", "/data", "--address", ":9000", "--console-address", ":9001"]
+          env:
+            # Console lives behind the ingress under /silo (prefix stripped by nginx).
+            - name: MINIO_BROWSER_REDIRECT_URL
+              value: http://data.127.0.0.1.nip.io:8080/silo
+            - name: MINIO_UPDATE
+              value: "off"
+          envFrom:
+            - secretRef:
+                name: silo-root   # MINIO_ROOT_USER / MINIO_ROOT_PASSWORD
+          ports:
+            - name: s3
+              containerPort: 9000
+            - name: console
+              containerPort: 9001
+          readinessProbe:
+            httpGet:
+              path: /minio/health/ready
+              port: s3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /minio/health/live
+              port: s3
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: silo-console
+  namespace: silo
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: data.127.0.0.1.nip.io
+      http:
+        paths:
+          - path: /silo(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: silo
+                port:
+                  name: console

@@ -1,2 +1,4 @@
-data/*
-*.parquet
+.env
+*.local.yaml
+.DS_Store
+.playwright-mcp/

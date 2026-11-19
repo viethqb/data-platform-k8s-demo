@@ -1,0 +1,32 @@
+# Argo CD served at http://data.127.0.0.1.nip.io:8080/argocd
+global:
+  domain: data.127.0.0.1.nip.io
+
+configs:
+  params:
+    # TLS terminates at (or is skipped by) ingress-nginx.
+    server.insecure: true
+    # Serve UI + API under /argocd (the ingress does not strip the prefix).
+    # rootpath mounts the server there; basehref sets <base href> in index.html
+    # so the SPA loads its assets from /argocd/.
+    server.rootpath: /argocd
+    server.basehref: /argocd
+  cm:
+    url: http://data.127.0.0.1.nip.io:8080/argocd
+    # Track resources by annotation so charts that set their own
+    # app.kubernetes.io/instance label don't confuse Argo CD.
+    application.resourceTrackingMethod: annotation
+
+dex:
+  enabled: false
+
+notifications:
+  enabled: false
+
+server:
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hostname: data.127.0.0.1.nip.io
+    path: /argocd
+    pathType: Prefix

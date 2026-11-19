@@ -1,0 +1,3 @@
+# CloudNativePG operator - defaults are fine for the lab.
+monitoring:
+  podMonitorEnabled: false

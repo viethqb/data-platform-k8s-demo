@@ -1,0 +1,126 @@
+# Apache Ranger Admin served at http://data.127.0.0.1.nip.io:8080/ranger
+# In-cluster policy URL for plugins: http://ranger-admin.ranger.svc:6080/ranger
+apiVersion: v1
+kind: Service
+metadata:
+  name: ranger-admin
+  namespace: ranger
+spec:
+  selector:
+    app: ranger-admin
+  ports:
+    - name: http
+      port: 6080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ranger-admin
+  namespace: ranger
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: ranger-admin
+  template:
+    metadata:
+      labels:
+        app: ranger-admin
+    spec:
+      containers:
+        - name: ranger-admin
+          image: docker.io/apache/ranger:2.9.0
+          command: ["/bin/bash", "/config/entrypoint.sh"]
+          env:
+            - name: RANGER_CONTEXT_PATH
+              value: /ranger
+            - name: RANGER_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ranger-secrets
+                  key: db-password
+            - name: RANGER_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ranger-secrets
+                  key: admin-password
+          ports:
+            - name: http
+              containerPort: 6080
+          # setup.sh replays DB checks on every start and can take 10+ minutes;
+          # killing it midway leaves a stale password-update lock in the DB.
+          startupProbe:
+            httpGet:
+              path: /ranger/login.jsp
+              port: http
+            periodSeconds: 10
+            failureThreshold: 180
+          readinessProbe:
+            httpGet:
+              path: /ranger/login.jsp
+              port: http
+            periodSeconds: 15
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 200m
+              memory: 1Gi
+            limits:
+              memory: 2Gi
+          volumeMounts:
+            - name: config
+              mountPath: /config
+      volumes:
+        - name: config
+          configMap:
+            name: ranger-admin-config
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ranger-admin
+  namespace: ranger
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: data.127.0.0.1.nip.io
+      http:
+        paths:
+          # Tomcat context path is /ranger, so no prefix stripping.
+          - path: /ranger
+            pathType: Prefix
+            backend:
+              service:
+                name: ranger-admin
+                port:
+                  name: http
+---
+# The Ranger React UI loads icons from the absolute path /images/<hash>.(svg|png),
+# ignoring the /ranger context path. Map exactly those files back under /ranger.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ranger-admin-images
+  namespace: ranger
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /ranger/images/$1
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: data.127.0.0.1.nip.io
+      http:
+        paths:
+          - path: /images/([0-9a-f]{32}\.(svg|png))
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: ranger-admin
+                port:
+                  name: http

@@ -1,0 +1,101 @@
+# Metabase served at http://data.127.0.0.1.nip.io:8080/metabase/
+# Metabase always listens on "/", so the ingress strips /metabase and
+# MB_SITE_URL tells it which public prefix to use in generated links.
+apiVersion: v1
+kind: Service
+metadata:
+  name: metabase
+  namespace: metabase
+spec:
+  selector:
+    app: metabase
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metabase
+  namespace: metabase
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: metabase
+  template:
+    metadata:
+      labels:
+        app: metabase
+    spec:
+      containers:
+        - name: metabase
+          image: docker.io/metabase/metabase:v0.63.22.4
+          env:
+            - name: MB_SITE_URL
+              value: http://data.127.0.0.1.nip.io:8080/metabase/
+            - name: MB_DB_TYPE
+              value: postgres
+            - name: MB_DB_HOST
+              value: pg-rw.postgres.svc.cluster.local
+            - name: MB_DB_PORT
+              value: "5432"
+            - name: MB_DB_DBNAME
+              value: metabase
+            - name: MB_DB_USER
+              value: metabase
+            - name: MB_DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: metabase-db
+                  key: password
+            - name: JAVA_OPTS
+              value: "-Xmx1g"
+          ports:
+            - name: http
+              containerPort: 3000
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 10
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 200m
+              memory: 1Gi
+            limits:
+              memory: 2Gi
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: metabase
+  namespace: metabase
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: data.127.0.0.1.nip.io
+      http:
+        paths:
+          - path: /metabase(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: metabase
+                port:
+                  name: http

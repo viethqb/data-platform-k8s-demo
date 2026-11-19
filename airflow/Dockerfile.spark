@@ -1,4 +1,0 @@
-FROM viet1846/spark-iceberg:3.4.1
-
-WORKDIR /app
-COPY dags/spark/src/* /app/

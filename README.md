@@ -1,224 +1,110 @@
-## Data Architecture
+# data-platform-k8s-demo
 
-![Architecture](./architecture.png)
+Data platform chạy local trên [kind](https://kind.sigs.k8s.io/), quản lý bằng
+Argo CD (app-of-apps). Tất cả UI dùng **chung một host**, mỗi app một path,
+đi qua ingress-nginx.
 
-
-## Create Kubernetes Local Cluster (Using Kind)
-```
-kind create cluster --name dev --config kind-config.yaml
-```
-## Install ArgoCD
- 
-```
-k create namespace argocd
-k apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/v2.10.5/manifests/install.yaml
-k -n argocd edit svc/argocd-server
-k -n argocd get svc
-k -n argocd get secrets argocd-initial-admin-secret --template={{.data.password}} | base64 -d
+```text
+http://data.127.0.0.1.nip.io:8080/<app>
 ```
 
-## Install Ingress Nginx
- 
-```
-k apply -f charts/nginx-ingess-deploy.yaml
-```
+`nip.io` tự resolve `data.127.0.0.1.nip.io` về `127.0.0.1`, không cần sửa
+`/etc/hosts`.
 
-## Install Metric Server
- 
-```
-k apply -f charts/metric-server.yaml
-```
+## Kiến trúc
 
-## Install Minio
-```
-helm upgrade --install minio -n minio -f ./charts/minio/minio-values.yaml ./charts/minio --create-namespace --debug
-```
+```mermaid
+flowchart LR
+  browser([Browser]) -->|":8080"| nginx[ingress-nginx<br/>1 host, nhiều path]
 
-## Install Hive Metastore
-```
-helm upgrade --install metastore-db -n metastore -f ./charts/postgres/hive-metastore-postgres-values.yaml ./charts/postgres --create-namespace --debug
-helm upgrade --install hive-metastore -n metastore -f ./charts/hive-metastore/hive-metastore-values.yaml ./charts/hive-metastore --create-namespace --debug
-```
+  subgraph kind["kind cluster: data-platform"]
+    nginx -->|/argocd| argocd[Argo CD]
+    nginx -->|/airflow| airflow[Airflow]
+    nginx -->|/metabase| metabase[Metabase]
+    nginx -->|/lakekeeper| lakekeeper[Lakekeeper]
+    nginx -->|/silo| siloc[Silo console]
+    nginx -->|/ranger| ranger[Ranger Admin]
 
-## Install Airflow
-```
-helm upgrade --install airflow -n airflow -f ./charts/airflow/airflow-values.yaml ./charts/airflow/ --create-namespace --debug
-```
+    silo[(Silo S3 API<br/>:9000, chỉ nội bộ)]
+    pg[(PostgreSQL<br/>CloudNativePG)]
 
-## Data Sample
-```
-link: https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2009-01.parquet
-source: https://github.com/toddwschneider/nyc-taxi-data
+    siloc --- silo
+    lakekeeper --> pg
+    lakekeeper -. warehouse .-> silo
+    airflow --> pg
+    metabase --> pg
+    ranger --> pg
+  end
 
-```
-## Install Spark Operator
-```
-helm repo add spark-operator https://kubeflow.github.io/spark-operator 
-helm upgrade --install spark-operator spark-operator/spark-operator --namespace spark-operator --set webhook.enable=true --create-namespace --debug
-kubectl create role spark-operator-submitter --verb=create,get --resource=sparkapplications,pods/log --namespace=spark-operator
-kubectl create rolebinding airflow-worker-spark-submitter --role=spark-operator-submitter --serviceaccount=airflow:airflow-worker --namespace=spark-operator
+  git[(GitHub repo)] -->|sync| argocd
 ```
 
-## Create S3 Connection in Airflow Ui (Airflow Remote Logging)
-```
-Connection Id: s3_default
-Connection Type: Amazon Web Services
-AWS Access Key ID: admin 
-AWS Secret Access Key: password
-Extra: {"endpoint_url": "http://minio.minio.svc.cluster.local:9000"}
-```
+| Path | App | Cách chạy dưới subpath |
+|---|---|---|
+| `/argocd` | Argo CD 3.6 | `server.rootpath` + `server.basehref`, không strip prefix |
+| `/airflow/` | Apache Airflow 3.2 (LocalExecutor) | `[api] base_url`, không strip prefix |
+| `/metabase/` | Metabase 0.63 | `MB_SITE_URL`, ingress strip `/metabase` |
+| `/lakekeeper/ui/` | Lakekeeper 0.15 (Iceberg REST catalog) | `LAKEKEEPER__UI__LAKEKEEPER_URL` + `X-Forwarded-Prefix`, ingress strip `/lakekeeper` |
+| `/silo/` | Silo console ([MinIO fork](https://silo.pigsty.io)) | `MINIO_BROWSER_REDIRECT_URL`, ingress strip `/silo` |
+| `/ranger/` | Apache Ranger Admin 2.9 | Tomcat `ranger.contextName=/ranger`, không strip prefix |
 
-## Create Kubernetes Connection in Airflow Ui
+Endpoint chỉ dùng trong cluster (không đi qua ingress):
 
-```
-Connection Id: kubernetes_default
-Connection Type: Kubernetes Cluster Connection
-In cluster configuration: yes
-Disable SSL: yes
-```
+| Service | Endpoint |
+|---|---|
+| Silo S3 API | `http://silo.silo.svc:9000` |
+| Lakekeeper Iceberg catalog | `http://lakekeeper.lakekeeper.svc:8181/catalog` |
+| Ranger policy manager (cho plugin) | `http://ranger-admin.ranger.svc:6080/ranger` |
+| PostgreSQL | `pg-rw.postgres.svc:5432` |
 
-## Install Trino
-```
-helm upgrade --install trino -n trino -f ./charts/trino/trino-values.yaml ./charts/trino --create-namespace --debug
+StarRocks và Vault không có trong stack: cổng SQL của StarRocks là TCP (không
+route theo path được) và UI của Vault không hỗ trợ base path.
 
-kubectl -n trino get po                                                                                                                    
-#NAME                                READY   STATUS    RESTARTS   AGE
-#trino-coordinator-6bfb99bf9-j7swp   1/1     Running   0          5m17s
-#trino-worker-6f8645fc67-76d54       1/1     Running   0          5m17s
-#trino-worker-6f8645fc67-d7svb       1/1     Running   0          5m17s
+## Chạy nhanh (1 lệnh)
 
-k -n trino exec -it trino-coordinator-6bfb99bf9-j7swp trino
-trino> show schemas from lakehouse;
-#       Schema       
-#--------------------
-# default            
-# information_schema 
-# nyc                
-#(3 rows)
-
-trino> show tables from lakehouse.nyc;
-#    Table    
-#-------------
-# taxis_large 
-#(1 row)
-
-trino> select * from lakehouse.nyc.taxis_large limit 10;
-# vendor_name | trip_pickup_datetime | trip_dropoff_datetime | passenger_count |   trip_distance    |     start_lon      | start_lat | rate>
-#-------------+----------------------+-----------------------+-----------------+--------------------+--------------------+-----------+----->
-# CMT         | 2009-01-02 22:24:12  | 2009-01-02 22:30:18   |               2 |                1.0 |         -73.970842 | 40.755679 |     >
-# VTS         | 2009-01-20 14:54:00  | 2009-01-20 14:57:00   |               1 |               0.56 |         -73.986705 |  40.74549 |     >
-# CMT         | 2009-01-05 07:40:42  | 2009-01-05 07:46:42   |               1 |                1.3 |         -73.974125 | 40.783851 |     >
-# CMT         | 2009-01-03 00:27:27  | 2009-01-03 00:35:43   |               1 |                1.6 |         -74.009746 | 40.706201 |     >
-# CMT         | 2009-01-05 14:03:46  | 2009-01-05 14:21:40   |               1 |                3.5 | -73.98064599999998 | 40.750467 |     >
-# CMT         | 2009-01-05 20:23:25  | 2009-01-05 20:33:14   |               2 |                1.2 |         -73.992506 | 40.694179 |     >
-# CMT         | 2009-01-01 13:32:49  | 2009-01-01 13:50:48   |               3 |                4.0 |         -73.993933 | 40.735112 |     >
-# CMT         | 2009-01-05 17:18:41  | 2009-01-05 17:22:16   |               1 |                1.0 | -73.96976499999998 | 40.753186 |     >
-# CMT         | 2009-01-05 17:30:30  | 2009-01-05 17:37:18   |               1 |                1.6 |         -73.960109 | 40.781185 |     >
-# CMT         | 2009-01-05 16:53:07  | 2009-01-05 16:55:24   |               1 | 0.5999999999999999 |         -73.996128 | 40.744313 |     >
-#(10 rows)
-
+```bash
+./scripts/bootstrap.sh     # cluster + secrets + ingress-nginx + Argo CD + root app
+kubectl --context kind-data-platform -n argocd get applications -w
+./scripts/credentials.sh   # in URL và tài khoản đăng nhập
 ```
 
-## Trino Pivot
+Lần đầu mất khoảng 20-25 phút, phần lớn là thời gian kéo image.
 
-```
-with dataset(Feature_Area, Feature, Product, Status) as
-         (values ('User experience', 'Sign Up', 'App1', 0),
-                 ('User experience', 'Sign Up', 'App1', 1),
-                 ('User experience', 'Sign Up', 'App1', 7),
-                 ('User experience', 'Sign Up', 'App2', 1),
-                 ('User experience', 'Log off', 'App1', 2),
-                 ('User experience', 'Log off', 'App2', 3),
-                 ('Back End', 'Update User', 'App3', 4),
-                 ('Back End', 'Delete User', 'App3', 5)),
-     agg as (select Feature_Area, Feature, Product, avg(Status) as avg_col
-             from dataset
-             group by 1, 2, 3),
-     map_agg as (select Feature_Area, Feature, map_agg(Product, avg_col) as key_1
-                 from agg
-                 group by 1, 2)
-SELECT Feature_Area,
-       Feature,
-       element_at(key_1, 'App1') AS App1,
-       element_at(key_1, 'App2') AS App2,
-       element_at(key_1, 'App3') AS App3
-from map_agg
-```
-## Install Apache Doris
+## Hướng dẫn từng bước
 
-```
-helm upgrade --install operator ./charts/doris-operator --namespace doris --create-namespace --debug
-k apply -f doris/doriscluster-sample-storageclass.yaml
-k run mysql-client --image=mysql:5.7 -it --rm --restart=Never --namespace=doris -- /bin/bash
+Nếu muốn hiểu từng thành phần, làm theo thứ tự trong `docs/`. Mỗi bước apply
+**một** Argo CD Application và kiểm tra trước khi sang bước tiếp theo.
 
-mysql -uroot -P9030 -hdoriscluster-sample-storageclass1-fe-service
-mysql> SET PASSWORD FOR 'root' = PASSWORD('12345678');
-mysql> SET PASSWORD FOR 'admin' = PASSWORD('12345678');
-mysql> CREATE CATALOG iceberg PROPERTIES (
-    "type"="iceberg",
-    "iceberg.catalog.type"="hms",
-    "hive.metastore.uris" = "thrift://10.96.53.242:9083",
-    "warehouse" = "s3://lakehouse",
-    "s3.access_key" = "admin",
-    "s3.secret_key" = "password",
-    "s3.endpoint" = "http://10.96.108.45:9000",
-    "s3.region" = "us-east-1"
-);
-mysql> select vendor_name, trip_pickup_datetime from iceberg.nyc.taxis_large limit 10;
+| # | Bước | Nội dung |
+|---|---|---|
+| 0 | [Chuẩn bị](docs/00-prerequisites.md) | Công cụ, tài nguyên, cấu trúc repo |
+| 1 | [kind cluster](docs/01-kind-cluster.md) | Tạo cluster, vì sao dùng port 8080 |
+| 2 | [Secrets](docs/02-secrets.md) | Sinh mật khẩu thành Kubernetes Secret |
+| 3 | [ingress-nginx](docs/03-ingress-nginx.md) | Một host, nhiều path, rewrite |
+| 4 | [Argo CD](docs/04-argocd.md) | Cài Argo CD dưới `/argocd` |
+| 5 | [PostgreSQL](docs/05-postgres.md) | CloudNativePG operator + cluster dùng chung |
+| 6 | [Silo](docs/06-silo.md) | Object storage, console qua `/silo` |
+| 7 | [Lakekeeper](docs/07-lakekeeper.md) | Iceberg REST catalog, UI qua `/lakekeeper` |
+| 8 | [Airflow](docs/08-airflow.md) | Airflow 3 qua `/airflow` |
+| 9 | [Metabase](docs/09-metabase.md) | BI qua `/metabase` |
+| 10 | [Ranger](docs/10-ranger.md) | Ranger Admin qua `/ranger` |
+| 11 | [Kiểm tra & xử lý sự cố](docs/11-verify-troubleshoot.md) | Checklist, lỗi thường gặp, dừng/xóa lab |
+
+## Cấu trúc repo
+
+```text
+kind/cluster.yaml        kind cluster, host 8080/8443 -> ingress
+scripts/                 bootstrap, credentials, destroy
+argocd/root.yaml         root Application (app-of-apps)
+argocd/apps/             mỗi thành phần một Application
+values/                  Helm values cho chart upstream
+manifests/               manifest thuần (postgres, silo, metabase, ranger)
+docs/                    hướng dẫn từng bước
 ```
 
-## Install Risingwave
+## Secrets
 
-```
-kubectl create -f https://github.com/jetstack/cert-manager/releases/download/v1.8.2/cert-manager.yaml
-kubectl apply --server-side -f ./risingwave/risingwave-operator.yaml
-helm upgrade --install operator -f ./risingwave/etcd-values.yaml ./charts/etcd --namespace risingwave --create-namespace --debug
-k apply -f ./risingwave/risingwave.yaml
-
-k run mysql-client --image=mysql:5.7 -it --rm --restart=Never --namespace=doris -- /bin/bash
-mysql -uroot -P9030 -hdoriscluster-sample-storageclass1-fe-service
-mysql> create table demo.demo_bhv_table(
-	seq_id bigint, 
-    user_id bigint,
-    user_name varchar
-)
-DISTRIBUTED BY HASH(user_id) BUCKETS 32;
-
-kubectl apply -f ../risingwave/psql-console.yaml
-kubectl -n risingwave exec -it psql-console -- bash
-psql -h risingwave-frontend -p 4567 -d dev -U root
-
-dev=> ALTER USER root WITH PASSWORD '12345678';
-dev=> CREATE SOURCE s1_source (
-     seq_id bigint, 
-     user_id bigint,
-     user_name varchar)
-WITH (                    
-     connector = 'datagen',
-     fields.seq_id.kind = 'sequence',
-     fields.seq_id.start = '1',
-     fields.seq_id.end = '10000000',
-     fields.user_id.kind = 'random',
-     fields.user_id.min = '1',
-     fields.user_id.max = '10000000',
-     fields.user_name.kind = 'random',
-     fields.user_name.length = '10',
-     datagen.rows.per.second = '100'
- ) FORMAT PLAIN ENCODE JSON;
-dev=> CREATE SINK doris_sink FROM s1_source
-WITH (
-    connector = 'doris',
-    type = 'append-only',
-    doris.url = 'http://doriscluster-sample-storageclass1-fe-service.doris:8030',
-    doris.user = 'root',
-    doris.password = '12345678',
-    doris.database = 'demo',
-    doris.table='demo_bhv_table',
-    force_append_only='true'
-);
-
-
-k run mysql-client --image=mysql:5.7 -it --rm --restart=Never --namespace=doris -- /bin/bash
-mysql -uroot -P9030 -hdoriscluster-sample-storageclass1-fe-service
-mysql> select count(1) from demo.demo_bhv_table;
-```
+`scripts/bootstrap.sh` sinh toàn bộ mật khẩu và key thành Kubernetes Secret.
+Repo không chứa thông tin nhạy cảm nào, manifest chỉ tham chiếu tên secret.
+Chạy lại script thì giữ nguyên giá trị cũ. Chi tiết ở
+[docs/02-secrets.md](docs/02-secrets.md).
