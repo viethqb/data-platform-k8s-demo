@@ -13,6 +13,18 @@ Có hai cách để tránh việc này. Repo dùng cách 1 làm mặc định:
 | Các lần sau | Pull từ cache qua mạng nội bộ, chỉ những image app cần | Vẫn phải save/import lại toàn bộ khoảng 8 GB: **~25 phút** đo trên Docker Desktop (macOS) với 14 image có sẵn |
 | Còn lại sau khi xoá cluster | Có (Docker volume) | Có (image trong Docker trên máy) |
 
+Số đo trên Docker Desktop macOS (8 CPU), dựng lại toàn bộ UAT bằng `bootstrap.sh`:
+
+| | Phần hạ tầng (bước 1-7) | Mọi app Healthy |
+|---|---|---|
+| `kind load`, image có sẵn trên máy | ~25 phút chỉ riêng bước load image | ~34 phút |
+| Registry cache, cache trống (lần đầu) | 5 phút | ~22 phút |
+| Registry cache, cache đầy | 3 phút | ~24 phút |
+
+Khi đã có cache, image không còn là nút thắt. Thời gian còn lại là các app tự
+khởi động lần lượt theo wave (Airflow khoảng 6 phút, Ranger khoảng 6-10 phút
+cho `setup.sh`).
+
 `kind load` chậm vì mỗi image phải đi một vòng: Docker trên máy → file tar →
 `docker exec` stream vào node → containerd giải nén. Trên Docker Desktop, mỗi
 GB mất vài phút. Registry cache không có vòng này: node pull trực tiếp từ một

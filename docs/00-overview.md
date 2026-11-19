@@ -63,6 +63,9 @@ flowchart TB
   **wave** đúng thứ tự trong bảng trên, đợi wave trước Healthy rồi mới sang
   wave sau (xem [bước 6](06-argocd.md#wave-cài-lần-lượt-không-cài-dồn)).
 
+Thời gian dựng toàn bộ UAT khoảng 20-25 phút (đo trên Docker Desktop macOS,
+8 CPU), phần lớn là chờ các app khởi động.
+
 ## Mục lục
 
 | # | Bước |
