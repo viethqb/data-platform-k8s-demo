@@ -6,6 +6,21 @@ configs:
     # Track resources by annotation so charts that set their own
     # app.kubernetes.io/instance label don't confuse Argo CD.
     application.resourceTrackingMethod: annotation
+    # Report a child Application's health to its parent (Argo CD does not by
+    # default). The root app-of-apps then waits for each sync wave to be
+    # Healthy before starting the next one, instead of starting every app at
+    # once and starving the node of CPU.
+    resource.customizations.health.argoproj.io_Application: |
+      hs = {}
+      hs.status = "Progressing"
+      hs.message = ""
+      if obj.status ~= nil and obj.status.health ~= nil then
+        hs.status = obj.status.health.status
+        if obj.status.health.message ~= nil then
+          hs.message = obj.status.health.message
+        end
+      end
+      return hs
 
 dex:
   enabled: false

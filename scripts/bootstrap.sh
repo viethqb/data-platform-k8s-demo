@@ -100,6 +100,13 @@ spec:
     automated:
       prune: true
       selfHeal: true
+    # Waves wait for child apps to be Healthy; retry if one is still Degraded.
+    retry:
+      limit: 20
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m
 EOF
 
 log "7. Vault"

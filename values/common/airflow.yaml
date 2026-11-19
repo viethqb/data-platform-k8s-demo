@@ -54,7 +54,23 @@ apiServer:
     failureThreshold: 30
     periodSeconds: 10
 
+# scheduler/triggerer/dag-processor probes run `airflow jobs check`, which
+# starts a Python process (~15s CPU). Under load the default 20s timeout
+# trips, the pod restarts and adds even more load. Give them room.
+scheduler:
+  startupProbe:
+    periodSeconds: 30
+    timeoutSeconds: 60
+    failureThreshold: 20
+  livenessProbe:
+    timeoutSeconds: 60
+dagProcessor:
+  livenessProbe:
+    timeoutSeconds: 60
+
 triggerer:
+  livenessProbe:
+    timeoutSeconds: 60
   persistence:
     size: 1Gi
 logs:
