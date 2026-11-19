@@ -8,6 +8,7 @@
 # Usage: ENV=uat ./scripts/bootstrap.sh
 #   REVISION=<branch|tag|sha>  Git revision Argo CD syncs (default: main)
 #   GITHUB_TOKEN=...           only needed if the repo is private
+#   HELM_TIMEOUT=20m           helm --wait timeout (image pulls can be slow)
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
@@ -40,7 +41,7 @@ helm_install() { # release chart namespace
   local args=()
   while IFS= read -r line; do args+=("${line}"); done < <(values_args "$1")
   helm --kube-context "${CONTEXT}" upgrade --install "$1" "${ROOT_DIR}/charts/$2" \
-    -n "$3" "${args[@]}" --wait --timeout 10m
+    -n "$3" "${args[@]}" --wait --timeout "${HELM_TIMEOUT:-20m}"
 }
 
 for bin in kind kubectl helm openssl; do
