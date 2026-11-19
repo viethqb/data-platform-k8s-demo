@@ -6,7 +6,7 @@ metadata:
 data:
   entrypoint.sh: |-
 {{ .Files.Get "files/entrypoint.sh" | indent 4 }}
-  install.properties: |-
+  install.properties: |
     # Non-secret part; passwords are appended at start from {{ .Values.secretName }}.
     PYTHON_COMMAND_INVOKER=python3
     RANGER_ADMIN_LOG_DIR=/var/log/ranger

@@ -8,6 +8,8 @@ CONTEXT_PATH="${RANGER_CONTEXT_PATH:-/ranger}"
 
 cp /config/install.properties "${ADMIN_DIR}/install.properties"
 {
+  # Guard against a template without a trailing newline.
+  echo
   echo "db_password=${RANGER_DB_PASSWORD}"
   echo "db_root_password=${RANGER_DB_PASSWORD}"
   echo "rangerAdmin_password=${RANGER_ADMIN_PASSWORD}"
