@@ -1,0 +1,13 @@
+# -- Name of the CNPG Cluster (service becomes <name>-rw).
+clusterName: pg
+instances: 1
+storage:
+  size: 5Gi
+  storageClass: ""
+# -- Secret (basic-auth) holding the postgres superuser password.
+superuserSecret: pg-superuser
+# -- One login role + database per entry. The role password is read from the
+# basic-auth Secret pg-role-<name>, created outside Git (scripts/bootstrap.sh).
+databases: []
+#  - name: airflow
+resources: {}

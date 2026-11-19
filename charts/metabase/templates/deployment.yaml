@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels: {{- include "metabase.selector" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {{- include "metabase.selector" . | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "metabase.selector" . | nindent 8 }}
+    spec:
+      containers:
+        - name: metabase
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            {{- with .Values.siteUrl }}
+            - name: MB_SITE_URL
+              value: {{ . | quote }}
+            {{- end }}
+            - name: MB_DB_TYPE
+              value: postgres
+            - name: MB_DB_HOST
+              value: {{ required "database.host is required" .Values.database.host | quote }}
+            - name: MB_DB_PORT
+              value: {{ .Values.database.port | quote }}
+            - name: MB_DB_DBNAME
+              value: {{ .Values.database.name | quote }}
+            - name: MB_DB_USER
+              value: {{ .Values.database.user | quote }}
+            - name: MB_DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.passwordSecret }}
+                  key: {{ .Values.database.passwordSecretKey }}
+            - name: JAVA_OPTS
+              value: {{ .Values.javaOpts | quote }}
+          ports:
+            - name: http
+              containerPort: 3000
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 10
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 30
+          resources: {{- toYaml .Values.resources | nindent 12 }}

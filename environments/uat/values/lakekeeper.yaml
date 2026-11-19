@@ -1,0 +1,11 @@
+catalog:
+  config:
+    # Browser-facing URL. In-cluster Iceberg clients keep using the service URL,
+    # so LAKEKEEPER__BASE_URI is intentionally unset.
+    LAKEKEEPER__UI__LAKEKEEPER_URL: http://data-uat.127.0.0.1.nip.io:8080/lakekeeper
+  ingress:
+    enabled: true
+    host: data-uat.127.0.0.1.nip.io
+    path: /lakekeeper(/|$)(.*)
+    annotations:
+      nginx.ingress.kubernetes.io/x-forwarded-prefix: /lakekeeper

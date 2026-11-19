@@ -1,0 +1,31 @@
+# -- Environment name; selects environments/<env>/values/<app>.yaml.
+env: ""
+# -- Git repo and revision every child Application reads from.
+repoURL: ""
+targetRevision: main
+destinationServer: https://kubernetes.default.svc
+project: default
+
+# -- Defaults applied to every app (overridable per app).
+defaults:
+  syncOptions:
+    - CreateNamespace=true
+  retry:
+    limit: 10
+    backoff:
+      duration: 15s
+      factor: 2
+      maxDuration: 5m
+
+# -- Components. Each renders an Application whose Helm chart lives at
+# charts/<chart> and whose values come from
+#   values/common/<name>.yaml        (shared by all environments, optional)
+#   environments/<env>/values/<name>.yaml  (this environment, optional)
+apps: {}
+#  airflow:
+#    enabled: true
+#    chart: airflow            # directory under charts/ (default: app name)
+#    namespace: airflow
+#    wave: 0
+#    finalizer: true           # cascade-delete resources with the Application
+#    syncOptions: [ServerSideApply=true]   # appended to defaults

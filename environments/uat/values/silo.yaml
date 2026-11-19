@@ -1,0 +1,7 @@
+consoleUrl: http://data-uat.127.0.0.1.nip.io:8080/silo
+persistence:
+  size: 10Gi
+ingress:
+  enabled: true
+  host: data-uat.127.0.0.1.nip.io
+  path: /silo

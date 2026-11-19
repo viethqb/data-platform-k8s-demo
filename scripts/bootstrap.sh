@@ -1,28 +1,20 @@
 #!/usr/bin/env bash
-# Bootstrap the data platform lab on kind:
-#   1. create the kind cluster
+# Bootstrap one environment of the data platform on kind:
+#   1. create the kind cluster        (environments/<env>/kind-cluster.yaml)
 #   2. generate credentials as Kubernetes Secrets (kept out of Git; reruns reuse them)
-#   3. install ingress-nginx + Argo CD with Helm (Argo CD adopts both afterwards)
-#   4. register the Git repo and apply the root app-of-apps
+#   3. install ingress-nginx + Argo CD from charts/ (Argo CD adopts both afterwards)
+#   4. apply the root app-of-apps     (charts/platform-apps + environments/<env>/platform-apps.yaml)
+#
+# Usage: ENV=uat ./scripts/bootstrap.sh
+#   REVISION=<branch|tag|sha>  Git revision Argo CD syncs (default: main)
+#   GITHUB_TOKEN=...           only needed if the repo is private
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CLUSTER_NAME="${CLUSTER_NAME:-data-platform}"
-REPO_URL="${REPO_URL:-https://github.com/viethqb/data-platform-k8s-demo.git}"
-CONTEXT="kind-${CLUSTER_NAME}"
-DOMAIN="data.127.0.0.1.nip.io:8080"
+REVISION="${REVISION:-main}"
+REPO_URL="$(awk '/^repoURL:/ {print $2}' "${ENV_DIR}/platform-apps.yaml")"
 
-INGRESS_NGINX_CHART_VERSION="4.15.1"
-ARGOCD_CHART_VERSION="10.18.2"
-
-kc() { kubectl --context "${CONTEXT}" "$@"; }
-log() { printf '\n\033[1;34m==> %s\033[0m\n' "$*"; }
 rand() { openssl rand -hex "${1:-16}"; }
-
-# Read one key of a secret (empty if the secret or key is missing).
-secret_value() {
-  kc -n "$1" get secret "$2" -o "jsonpath={.data.$3}" 2>/dev/null | base64 -d 2>/dev/null || true
-}
 
 # Create a secret only if it does not exist yet, so reruns keep existing passwords.
 ensure_secret() {
@@ -44,19 +36,24 @@ role_password() {
   printf '%s' "${pw}"
 }
 
-require() {
-  for bin in "$@"; do
-    command -v "${bin}" >/dev/null || { echo "missing required tool: ${bin}" >&2; exit 1; }
-  done
+helm_install() { # release chart namespace
+  local args=()
+  while IFS= read -r line; do args+=("${line}"); done < <(values_args "$1")
+  helm --kube-context "${CONTEXT}" upgrade --install "$1" "${ROOT_DIR}/charts/$2" \
+    -n "$3" "${args[@]}" --wait --timeout 10m
 }
 
-require kind kubectl helm openssl
+for bin in kind kubectl helm openssl; do
+  command -v "${bin}" >/dev/null || { echo "missing required tool: ${bin}" >&2; exit 1; }
+done
 
-log "kind cluster ${CLUSTER_NAME}"
+log "environment ${ENV}: cluster ${CLUSTER_NAME}, ${BASE_URL}, revision ${REVISION}"
+
+log "kind cluster"
 if kind get clusters | grep -qx "${CLUSTER_NAME}"; then
   echo "cluster already exists"
 else
-  kind create cluster --config "${ROOT_DIR}/kind/cluster.yaml"
+  kind create cluster --config "${ENV_DIR}/kind-cluster.yaml"
 fi
 
 log "namespaces"
@@ -96,42 +93,63 @@ ensure_secret silo silo-root \
   --from-literal=MINIO_ROOT_USER=admin --from-literal=MINIO_ROOT_PASSWORD="$(rand)"
 
 log "ingress-nginx"
-helm --kube-context "${CONTEXT}" upgrade --install ingress-nginx ingress-nginx \
-  --repo https://kubernetes.github.io/ingress-nginx --version "${INGRESS_NGINX_CHART_VERSION}" \
-  -n ingress-nginx -f "${ROOT_DIR}/values/ingress-nginx.yaml" --wait --timeout 5m
+helm_install ingress-nginx ingress-nginx ingress-nginx
 
 log "argo cd"
-helm --kube-context "${CONTEXT}" upgrade --install argocd argo-cd \
-  --repo https://argoproj.github.io/argo-helm --version "${ARGOCD_CHART_VERSION}" \
-  -n argocd -f "${ROOT_DIR}/values/argocd.yaml" --wait --timeout 10m
+helm_install argocd argo-cd argocd
 
 log "git repository credentials"
 GIT_TOKEN="${GITHUB_TOKEN:-}"
-if [ -z "${GIT_TOKEN}" ] && command -v gh >/dev/null; then
-  GIT_TOKEN="$(gh auth token 2>/dev/null || true)"
-fi
 if [ -n "${GIT_TOKEN}" ]; then
-  kc -n argocd create secret generic repo-data-platform-k8s-demo \
+  kc -n argocd create secret generic platform-repo \
     --from-literal=type=git --from-literal=url="${REPO_URL}" \
     --from-literal=username=git --from-literal=password="${GIT_TOKEN}" \
     --dry-run=client -o yaml \
     | kc label --local -f - argocd.argoproj.io/secret-type=repository -o yaml \
     | kc apply -f - >/dev/null
-  echo "registered ${REPO_URL}"
+  echo "registered ${REPO_URL} with GITHUB_TOKEN"
 else
-  echo "no GITHUB_TOKEN / gh login found; using ${REPO_URL} anonymously (public repo)"
+  echo "no GITHUB_TOKEN; reading ${REPO_URL} anonymously (public repo)"
 fi
 
 log "root app-of-apps"
-kc apply -f "${ROOT_DIR}/argocd/root.yaml"
+kc apply -f - <<EOF
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+  labels:
+    platform.env: ${ENV}
+spec:
+  project: default
+  source:
+    repoURL: ${REPO_URL}
+    targetRevision: ${REVISION}
+    path: charts/platform-apps
+    helm:
+      releaseName: platform-apps
+      valueFiles:
+        - ../../environments/${ENV}/platform-apps.yaml
+      parameters:
+        - name: targetRevision
+          value: ${REVISION}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+EOF
 
 ARGOCD_PW="$(secret_value argocd argocd-initial-admin-secret password)"
 cat <<EOF
 
-Done. Argo CD is now syncing the platform (first sync takes ~5-10 minutes).
+Done. Argo CD is now syncing ${ENV} (first sync takes ~20 minutes).
 Watch progress:  kubectl --context ${CONTEXT} -n argocd get applications
 
-Show all URLs and logins:  ${ROOT_DIR}/scripts/credentials.sh
+Show all URLs and logins:  ENV=${ENV} ${ROOT_DIR}/scripts/credentials.sh
 
-Argo CD   http://${DOMAIN}/argocd    admin / ${ARGOCD_PW}
+Argo CD   ${BASE_URL}/argocd    admin / ${ARGOCD_PW}
 EOF

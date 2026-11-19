@@ -1,0 +1,62 @@
+{{- $login := printf "%s/login.jsp" (trimSuffix "/" .Values.contextPath) }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels: {{- include "ranger.selector" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: {{- include "ranger.selector" . | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "ranger.selector" . | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      containers:
+        - name: ranger-admin
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/bin/bash", "/config/entrypoint.sh"]
+          env:
+            - name: RANGER_CONTEXT_PATH
+              value: {{ .Values.contextPath | quote }}
+            - name: RANGER_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secretName }}
+                  key: db-password
+            - name: RANGER_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secretName }}
+                  key: admin-password
+          ports:
+            - name: http
+              containerPort: 6080
+          startupProbe:
+            httpGet:
+              path: {{ $login }}
+              port: http
+            periodSeconds: {{ .Values.startupProbe.periodSeconds }}
+            failureThreshold: {{ .Values.startupProbe.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: {{ $login }}
+              port: http
+            periodSeconds: 15
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 30
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /config
+      volumes:
+        - name: config
+          configMap:
+            name: {{ .Release.Name }}-config

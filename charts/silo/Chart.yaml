@@ -1,0 +1,6 @@
+apiVersion: v2
+name: silo
+description: Silo (community MinIO fork) single node; S3 API in-cluster, console behind the ingress
+type: application
+version: 0.1.0
+appVersion: RELEASE.2026-11-12T00-00-00Z

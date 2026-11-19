@@ -1,0 +1,27 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ .Values.clusterName }}
+spec:
+  instances: {{ .Values.instances }}
+  storage:
+    size: {{ .Values.storage.size }}
+    {{- with .Values.storage.storageClass }}
+    storageClass: {{ . }}
+    {{- end }}
+  enableSuperuserAccess: true
+  superuserSecret:
+    name: {{ .Values.superuserSecret }}
+  {{- with .Values.resources }}
+  resources:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  managed:
+    roles:
+      {{- range .Values.databases }}
+      - name: {{ .name }}
+        ensure: present
+        login: true
+        passwordSecret:
+          name: pg-role-{{ .name }}
+      {{- end }}

@@ -1,0 +1,8 @@
+clusterName: pg
+superuserSecret: pg-superuser
+# One login role + database per app; passwords live in pg-role-<name> secrets.
+databases:
+  - name: lakekeeper
+  - name: airflow
+  - name: metabase
+  - name: ranger

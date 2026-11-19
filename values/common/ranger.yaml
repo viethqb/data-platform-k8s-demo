@@ -1,0 +1,6 @@
+contextPath: /ranger
+database:
+  host: pg-rw.postgres.svc.cluster.local:5432
+  name: ranger
+  user: ranger
+secretName: ranger-secrets

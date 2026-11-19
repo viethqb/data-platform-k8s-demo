@@ -1,0 +1,9 @@
+config:
+  api:
+    # UI + REST API are mounted under this path; the ingress must NOT strip it.
+    base_url: http://data-uat.127.0.0.1.nip.io:8080/airflow
+ingress:
+  apiServer:
+    enabled: true
+    host: data-uat.127.0.0.1.nip.io
+    path: /airflow

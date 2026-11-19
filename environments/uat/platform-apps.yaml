@@ -1,0 +1,40 @@
+# App-of-apps values for UAT (rendered by charts/platform-apps).
+env: uat
+repoURL: https://github.com/viethqb/data-platform-k8s-demo.git
+targetRevision: main
+
+apps:
+  ingress-nginx:
+    namespace: ingress-nginx
+    wave: -3
+    finalizer: false          # never cascade-delete the ingress
+    syncOptions: [ServerSideApply=true]
+  argocd:
+    chart: argo-cd
+    namespace: argocd
+    wave: -3
+    finalizer: false          # never cascade-delete Argo CD itself
+    syncOptions: [ServerSideApply=true]
+  cloudnative-pg:
+    namespace: cnpg-system
+    wave: -2
+    syncOptions: [ServerSideApply=true]
+  postgres:
+    chart: postgres-cluster
+    namespace: postgres
+    wave: -1
+    syncOptions: [SkipDryRunOnMissingResource=true]
+  silo:
+    namespace: silo
+  lakekeeper:
+    namespace: lakekeeper
+    syncOptions: [ServerSideApply=true]
+  airflow:
+    namespace: airflow
+    syncOptions: [ServerSideApply=true]
+  metabase:
+    namespace: metabase
+  ranger:
+    chart: ranger-admin
+    releaseName: ranger-admin
+    namespace: ranger

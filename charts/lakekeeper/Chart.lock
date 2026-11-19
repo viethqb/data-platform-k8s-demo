@@ -1,0 +1,9 @@
+dependencies:
+- name: postgres
+  repository: https://groundhog2k.github.io/helm-charts/
+  version: 1.6.9
+- name: openfga
+  repository: https://openfga.github.io/helm-charts
+  version: 0.4.1
+digest: sha256:32117ceb58dfe43109f559e5cf151425f0a5e80d162e0b33b87f9980ad01e08d
+generated: "2026-11-18T16:02:27.344580191Z"

@@ -1,0 +1,55 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+  labels: {{- include "ranger.selector" . | nindent 4 }}
+data:
+  entrypoint.sh: |-
+{{ .Files.Get "files/entrypoint.sh" | indent 4 }}
+  install.properties: |-
+    # Non-secret part; passwords are appended at start from {{ .Values.secretName }}.
+    PYTHON_COMMAND_INVOKER=python3
+    RANGER_ADMIN_LOG_DIR=/var/log/ranger
+    RANGER_PID_DIR_PATH=/var/run/ranger
+    RANGER_ADMIN_LOGBACK_CONF_FILE=/opt/ranger/admin/ews/webapp/WEB-INF/classes/conf/logback.xml
+    DB_FLAVOR=POSTGRES
+    SQL_CONNECTOR_JAR=/usr/share/java/postgresql.jar
+    db_host={{ required "database.host is required" .Values.database.host }}
+    db_name={{ .Values.database.name }}
+    db_user={{ .Values.database.user }}
+    db_root_user={{ .Values.database.user }}
+    # Database + role already exist (CloudNativePG), so skip the DBA step.
+    setup_mode=SeparateDBA
+    postgres_core_file=db/postgres/optimized/current/ranger_core_db_postgres.sql
+    postgres_audit_file=db/postgres/xa_audit_db_postgres.sql
+    mysql_core_file=db/mysql/optimized/current/ranger_core_db_mysql.sql
+    mysql_audit_file=db/mysql/xa_audit_db.sql
+    oracle_core_file=
+    sqlserver_core_file=
+    sqlanywhere_core_file=
+    audit_store=
+    policymgr_external_url={{ .Values.externalUrl }}
+    policymgr_http_enabled=true
+    unix_user=ranger
+    unix_user_pwd=ranger
+    unix_group=ranger
+    cred_keystore_filename=
+    XAPOLICYMGR_DIR=$PWD
+    app_home=$PWD/ews/webapp
+    TMPFILE=$PWD/.fi_tmp
+    LOGFILE=$PWD/logfile
+    LOGFILES="$LOGFILE"
+    JAVA_BIN='java'
+    JAVA_VERSION_REQUIRED='1.8'
+    ranger_admin_max_heap_size={{ .Values.heapSize }}
+    PATCH_RETRY_INTERVAL=120
+    STALE_PATCH_ENTRY_HOLD_TIME=10
+    hadoop_conf=
+    authentication_method=NONE
+    spnego_principal=
+    spnego_keytab=
+    token_valid=
+    admin_principal=
+    admin_keytab=
+    lookup_principal=
+    lookup_keytab=

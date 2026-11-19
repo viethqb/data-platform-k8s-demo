@@ -1,0 +1,6 @@
+apiVersion: v2
+name: ranger-admin
+description: Apache Ranger Admin on PostgreSQL, servable under a sub-path (Tomcat context path)
+type: application
+version: 0.1.0
+appVersion: "2.9.0"

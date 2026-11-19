@@ -1,0 +1,15 @@
+helmWait: true
+catalog:
+  dbMigrations:
+    ttlSecondsAfterFinished: 600
+  podSecurityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - all

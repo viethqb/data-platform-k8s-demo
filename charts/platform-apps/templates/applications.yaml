@@ -1,0 +1,46 @@
+{{- $root := . }}
+{{- $env := required "env is required" .Values.env }}
+{{- range $name, $app := .Values.apps }}
+{{- if ne (toString $app.enabled) "false" }}
+{{- $chart := default $name $app.chart }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $name }}
+  namespace: {{ $root.Release.Namespace }}
+  labels:
+    platform.env: {{ $env }}
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ default 0 $app.wave | quote }}
+  {{- if ne (toString $app.finalizer) "false" }}
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  {{- end }}
+spec:
+  project: {{ $root.Values.project }}
+  source:
+    repoURL: {{ required "repoURL is required" $root.Values.repoURL }}
+    targetRevision: {{ $root.Values.targetRevision }}
+    path: charts/{{ $chart }}
+    helm:
+      releaseName: {{ default $name $app.releaseName }}
+      # Paths are relative to the chart directory.
+      valueFiles:
+        - ../../values/common/{{ $name }}.yaml
+        - ../../environments/{{ $env }}/values/{{ $name }}.yaml
+      ignoreMissingValueFiles: true
+  destination:
+    server: {{ $root.Values.destinationServer }}
+    namespace: {{ required (printf "apps.%s.namespace is required" $name) $app.namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry: {{- toYaml $root.Values.defaults.retry | nindent 6 }}
+    syncOptions:
+      {{- range concat $root.Values.defaults.syncOptions (default list $app.syncOptions) }}
+      - {{ . }}
+      {{- end }}
+{{- end }}
+{{- end }}

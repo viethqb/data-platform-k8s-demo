@@ -1,0 +1,14 @@
+configs:
+  params:
+    # TLS terminates at (or is skipped by) ingress-nginx.
+    server.insecure: true
+  cm:
+    # Track resources by annotation so charts that set their own
+    # app.kubernetes.io/instance label don't confuse Argo CD.
+    application.resourceTrackingMethod: annotation
+
+dex:
+  enabled: false
+
+notifications:
+  enabled: false
