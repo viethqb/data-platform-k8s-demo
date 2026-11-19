@@ -1,13 +1,13 @@
 # 7. Lakekeeper (Iceberg REST catalog)
 
-- **UI**: <http://data.127.0.0.1.nip.io:8080/lakekeeper/ui/>
+- **UI**: <http://data-uat.127.0.0.1.nip.io:8080/lakekeeper/ui/>
 - **Catalog cho Spark/Trino/StarRocks trong cluster**:
   `http://lakekeeper.lakekeeper.svc:8181/catalog`
 
 ## Cài đặt
 
 ```bash
-kubectl apply -f argocd/apps/lakekeeper.yaml
+ENV=uat ./scripts/apply-app.sh lakekeeper
 kubectl -n lakekeeper get pods
 ```
 
@@ -15,13 +15,16 @@ Chart chạy job `db-migration` trước, rồi mới đến pod catalog.
 
 ## UI dưới `/lakekeeper`
 
+Phần riêng của UAT (`environments/uat/values/lakekeeper.yaml`), ghép với
+annotation `use-regex` + `rewrite-target` trong `values/common/lakekeeper.yaml`:
+
 ```yaml
 catalog:
   config:
-    LAKEKEEPER__UI__LAKEKEEPER_URL: http://data.127.0.0.1.nip.io:8080/lakekeeper
+    LAKEKEEPER__UI__LAKEKEEPER_URL: http://data-uat.127.0.0.1.nip.io:8080/lakekeeper
   ingress:
     enabled: true
-    host: data.127.0.0.1.nip.io
+    host: data-uat.127.0.0.1.nip.io
     path: /lakekeeper(/|$)(.*)
     annotations:
       nginx.ingress.kubernetes.io/use-regex: "true"
@@ -37,7 +40,8 @@ catalog:
   từ header `Host`, còn trình duyệt nhận URL public từ các header
   `X-Forwarded-*`.
 
-Database dùng Postgres chung thay cho Postgres đi kèm chart:
+Database dùng Postgres chung thay cho Postgres đi kèm chart
+(`values/common/lakekeeper.yaml`):
 
 ```yaml
 postgresql: { enabled: false }
@@ -56,7 +60,7 @@ secretBackend:
 ## Kiểm tra
 
 ```bash
-B=http://data.127.0.0.1.nip.io:8080
+B=http://data-uat.127.0.0.1.nip.io:8080
 curl -s -o /dev/null -w '%{http_code}\n' $B/lakekeeper/health          # 200
 curl -s $B/lakekeeper/ui/ | grep -o 'src="/lakekeeper/ui/[^"]*"' | head -1
 ```

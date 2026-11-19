@@ -1,12 +1,12 @@
 # 8. Airflow 3
 
-<http://data.127.0.0.1.nip.io:8080/airflow/>, đăng nhập `admin` / mật khẩu
-trong `./scripts/credentials.sh`.
+<http://data-uat.127.0.0.1.nip.io:8080/airflow/>, đăng nhập `admin` / mật khẩu
+trong `ENV=uat ./scripts/credentials.sh`.
 
 ## Cài đặt
 
 ```bash
-kubectl apply -f argocd/apps/airflow.yaml
+ENV=uat ./scripts/apply-app.sh airflow
 kubectl -n airflow get pods -w
 ```
 
@@ -16,14 +16,16 @@ Thứ tự khởi động: job `run-airflow-migrations` -> job `create-user` ->
 
 ## Chạy dưới `/airflow`
 
+`environments/uat/values/airflow.yaml`:
+
 ```yaml
 config:
   api:
-    base_url: http://data.127.0.0.1.nip.io:8080/airflow
+    base_url: http://data-uat.127.0.0.1.nip.io:8080/airflow
 ingress:
   apiServer:
     enabled: true
-    host: data.127.0.0.1.nip.io
+    host: data-uat.127.0.0.1.nip.io
     path: /airflow
     pathType: Prefix          # không strip prefix
 ```
@@ -32,7 +34,7 @@ Với `base_url` có path, api-server phục vụ UI và REST API ở `/airflow/
 (health check vẫn trả lời ở cả `/api/v2/monitor/health`, nên probe mặc định
 của chart không cần sửa).
 
-## Các điểm khác trong values
+## Các điểm khác trong values (`values/common/airflow.yaml`)
 
 ```yaml
 executor: LocalExecutor         # không cần Redis/Celery cho lab
@@ -73,7 +75,7 @@ Còn một lỗi đã biết nhưng không ảnh hưởng: UI Airflow 3.2 gửi 
 
 ```bash
 kubectl -n airflow exec airflow-scheduler-0 -c scheduler -- airflow dags list | head
-curl -s -H 'Accept: text/html' http://data.127.0.0.1.nip.io:8080/airflow/ | grep -o '<base href="[^"]*"'
+curl -s -H 'Accept: text/html' http://data-uat.127.0.0.1.nip.io:8080/airflow/ | grep -o '<base href="[^"]*"'
 # <base href="/airflow/"
 ```
 

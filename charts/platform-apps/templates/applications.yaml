@@ -1,7 +1,7 @@
 {{- $root := . }}
 {{- $env := required "env is required" .Values.env }}
 {{- range $name, $app := .Values.apps }}
-{{- if ne (toString $app.enabled) "false" }}
+{{- if and (ne (toString $app.enabled) "false") (or (not $root.Values.only) (eq $root.Values.only $name)) }}
 {{- $chart := default $name $app.chart }}
 ---
 apiVersion: argoproj.io/v1alpha1

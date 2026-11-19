@@ -3,6 +3,8 @@ env: ""
 # -- Git repo and revision every child Application reads from.
 repoURL: ""
 targetRevision: main
+# -- Render only this app (used by the step-by-step docs). Empty = all apps.
+only: ""
 destinationServer: https://kubernetes.default.svc
 project: default
 

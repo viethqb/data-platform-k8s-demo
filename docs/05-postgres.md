@@ -6,14 +6,14 @@ Metabase và Ranger. Mỗi app có database và role riêng.
 ## Cài operator
 
 ```bash
-kubectl apply -f argocd/apps/cloudnative-pg.yaml
+ENV=uat ./scripts/apply-app.sh cloudnative-pg
 kubectl -n cnpg-system rollout status deploy/cloudnative-pg
 ```
 
 ## Tạo cluster + database
 
 ```bash
-kubectl apply -f argocd/apps/postgres.yaml
+ENV=uat ./scripts/apply-app.sh postgres
 kubectl -n postgres get cluster,database
 ```
 
@@ -35,8 +35,22 @@ bình thường: retry sẽ tự xử lý khi webhook sẵn sàng.
 
 ## Manifest
 
-`manifests/postgres/cluster.yaml` khai báo role kèm secret chứa mật khẩu
-(tạo ở [bước 2](02-secrets.md)):
+Chart local `charts/postgres-cluster` sinh `Cluster` và `Database` từ danh sách
+`databases` trong `values/common/postgres.yaml`:
+
+```yaml
+clusterName: pg
+superuserSecret: pg-superuser
+databases:
+  - name: lakekeeper
+  - name: airflow
+  - name: metabase
+  - name: ranger
+```
+
+Dung lượng và số instance là cấu hình riêng của môi trường
+(`environments/uat/values/postgres.yaml`). Chart sinh ra `Cluster` với role
+lấy mật khẩu từ secret `pg-role-<name>` (tạo ở [bước 2](02-secrets.md)):
 
 ```yaml
 spec:
@@ -53,8 +67,7 @@ spec:
       # ... lakekeeper, metabase, ranger
 ```
 
-`manifests/postgres/databases.yaml` tạo database bằng CRD `Database`, owner là
-role cùng tên:
+và mỗi app một `Database`, owner là role cùng tên:
 
 ```yaml
 apiVersion: postgresql.cnpg.io/v1

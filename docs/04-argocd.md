@@ -3,31 +3,33 @@
 ## Cài đặt
 
 ```bash
-helm upgrade --install argocd argo-cd \
-  --repo https://argoproj.github.io/argo-helm --version 10.18.2 \
-  -n argocd -f values/argocd.yaml --wait
+helm upgrade --install argocd charts/argo-cd -n argocd \
+  -f values/common/argocd.yaml \
+  -f environments/uat/values/argocd.yaml \
+  --wait
 
 kubectl -n argocd get secret argocd-initial-admin-secret \
   -o jsonpath='{.data.password}' | base64 -d; echo
 ```
 
-Mở <http://data.127.0.0.1.nip.io:8080/argocd> và đăng nhập `admin` / mật khẩu ở trên.
+Mở <http://data-uat.127.0.0.1.nip.io:8080/argocd> và đăng nhập `admin` /
+mật khẩu ở trên.
 
 ## Chạy dưới `/argocd`
+
+`environments/uat/values/argocd.yaml`:
 
 ```yaml
 configs:
   params:
-    server.insecure: true        # không TLS phía sau ingress
     server.rootpath: /argocd     # server mount UI + API ở /argocd
     server.basehref: /argocd     # <base href="/argocd/"> trong index.html
   cm:
-    url: http://data.127.0.0.1.nip.io:8080/argocd
+    url: http://data-uat.127.0.0.1.nip.io:8080/argocd
 server:
   ingress:
     enabled: true
-    ingressClassName: nginx
-    hostname: data.127.0.0.1.nip.io
+    hostname: data-uat.127.0.0.1.nip.io
     path: /argocd                # không strip prefix
 ```
 
@@ -41,7 +43,7 @@ Khi tự test bằng `curl`, nhớ thêm `-H 'Accept: text/html'`. Argo CD chỉ
 `Accept: */*` nên luôn thấy `<base href="/">` và rất dễ hiểu nhầm.
 
 ```bash
-curl -s -H 'Accept: text/html' http://data.127.0.0.1.nip.io:8080/argocd/applications \
+curl -s -H 'Accept: text/html' http://data-uat.127.0.0.1.nip.io:8080/argocd/applications \
   | grep -o '<base href="[^"]*"'
 # <base href="/argocd/"
 ```
@@ -49,27 +51,66 @@ curl -s -H 'Accept: text/html' http://data.127.0.0.1.nip.io:8080/argocd/applicat
 Dùng CLI qua ingress:
 
 ```bash
-argocd login data.127.0.0.1.nip.io:8080 --grpc-web-root-path /argocd --plaintext \
+argocd login data-uat.127.0.0.1.nip.io:8080 --grpc-web-root-path /argocd --plaintext \
   --username admin --password <password>
 ```
 
-## Kết nối repo Git
+## App-of-apps: `charts/platform-apps`
 
-Repo public thì Argo CD đọc được ngay, bỏ qua bước này. Với fork private:
+Thay vì viết tay từng file Application, chart `platform-apps` sinh Application
+cho mọi app khai báo trong `environments/<env>/platform-apps.yaml`:
 
-```bash
-kubectl -n argocd create secret generic repo-data-platform-k8s-demo \
-  --from-literal=type=git \
-  --from-literal=url=https://github.com/<user>/<repo>.git \
-  --from-literal=username=git \
-  --from-literal=password="$(gh auth token)"
-kubectl -n argocd label secret repo-data-platform-k8s-demo argocd.argoproj.io/secret-type=repository
+```yaml
+env: uat
+repoURL: https://github.com/viethqb/data-platform-k8s-demo.git
+targetRevision: main
+
+apps:
+  ingress-nginx:
+    namespace: ingress-nginx
+    wave: -3
+    finalizer: false          # không cascade-delete ingress
+    syncOptions: [ServerSideApply=true]
+  ranger:
+    chart: ranger-admin       # thư mục trong charts/ (mặc định = tên app)
+    releaseName: ranger-admin # tên release -> service ranger-admin
+    namespace: ranger
+  # ...
 ```
 
-## Cho Argo CD tự quản lý ingress-nginx và chính nó
+Mỗi Application sinh ra trông như sau:
+
+```yaml
+spec:
+  source:
+    repoURL: https://github.com/viethqb/data-platform-k8s-demo.git
+    targetRevision: main
+    path: charts/ranger-admin
+    helm:
+      releaseName: ranger-admin
+      valueFiles:                                  # tương đối với thư mục chart
+        - ../../values/common/ranger.yaml
+        - ../../environments/uat/values/ranger.yaml
+      ignoreMissingValueFiles: true                # app không cần đủ cả 2 file
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    retry: { limit: 10, backoff: { duration: 15s, factor: 2, maxDuration: 5m } }
+```
+
+Thứ tự cài theo `wave`: `-3` ingress + Argo CD, `-2` CNPG operator,
+`-1` Postgres, `0` các app. App khởi động khi DB chưa sẵn sàng sẽ tự sync lại
+nhờ `retry`.
+
+Muốn tắt một app trong một môi trường: thêm `enabled: false` cho app đó trong
+`platform-apps.yaml`.
+
+## Cài từng app (dùng cho các bước sau)
+
+`scripts/apply-app.sh` render đúng một Application rồi apply:
 
 ```bash
-kubectl apply -f argocd/apps/ingress-nginx.yaml -f argocd/apps/argocd.yaml
+ENV=uat ./scripts/apply-app.sh ingress-nginx
+ENV=uat ./scripts/apply-app.sh argocd
 kubectl -n argocd get applications
 ```
 
@@ -79,30 +120,26 @@ argocd          Synced        Healthy
 ingress-nginx   Synced        Healthy
 ```
 
-Hai Application này không có `resources-finalizer`, nên xoá Application sẽ
-không gỡ luôn Argo CD hay ingress.
+Từ bước 5 trở đi, mỗi bước chỉ là `ENV=uat ./scripts/apply-app.sh <app>`.
+Muốn test một branch chưa merge thì thêm `REVISION=<branch>`.
 
-## Cách các Application được dựng
+## Bật tất cả cùng lúc (root app)
 
-Mỗi file trong `argocd/apps/` là một Application có:
+`scripts/bootstrap.sh` tạo Application `root` trỏ vào `charts/platform-apps`
+với values của môi trường. Root sinh và quản lý toàn bộ Application con:
 
-- `sync-wave` để định thứ tự: `-3` ingress + Argo CD, `-2` CNPG operator,
-  `-1` Postgres, `0` các app.
-- `automated: { prune, selfHeal }` cùng `retry` (tối đa 10 lần, backoff đến
-  5 phút). App khởi động khi DB chưa sẵn sàng sẽ tự sync lại.
-- `ServerSideApply=true` cho chart Helm (CRD lớn), và
-  `SkipDryRunOnMissingResource=true` cho manifest dùng CRD chưa được cài.
+```bash
+ENV=uat REVISION=main ./scripts/bootstrap.sh   # idempotent, chạy lại an toàn
+```
+
+Root sẽ nhận (adopt) các Application đã tạo bằng `apply-app.sh`, nên có thể
+cài vài bước bằng tay rồi bật root cho phần còn lại.
+
+## Lưu ý về retry
 
 Retry của Argo CD **dùng lại revision của lần sync bị lỗi**. Nếu bạn push bản
 sửa trong lúc app đang retry, commit mới chỉ được áp sau khi vòng retry hiện
-tại kết thúc. Muốn áp ngay thì dùng
-`argocd app terminate-op <app>` hoặc bấm *Terminate* trên UI, rồi sync lại.
-
-Từ bước 5 trở đi, mỗi bước chỉ là `kubectl apply -f argocd/apps/<app>.yaml`.
-Nếu muốn bật tất cả cùng lúc:
-
-```bash
-kubectl apply -f argocd/root.yaml
-```
+tại kết thúc. Muốn áp ngay thì dùng `argocd app terminate-op <app>` hoặc bấm
+*Terminate* trên UI, rồi sync lại.
 
 Tiếp theo: [5. PostgreSQL](05-postgres.md)

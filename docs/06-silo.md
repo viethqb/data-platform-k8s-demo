@@ -5,7 +5,7 @@ duy trì, sau khi bản community của MinIO ngừng phát hành. Silo giữ ng
 biến môi trường `MINIO_*`, health endpoint và client `mc`.
 
 - **S3 API** chỉ dùng trong cluster: `http://silo.silo.svc:9000`
-- **Console** đi qua ingress: <http://data.127.0.0.1.nip.io:8080/silo/>
+- **Console** đi qua ingress: <http://data-uat.127.0.0.1.nip.io:8080/silo/>
 
 S3 API không đặt dưới subpath được: chữ ký SigV4 tính trên cả path, và kiểu
 path-style coi đoạn path đầu tiên là tên bucket.
@@ -13,16 +13,30 @@ path-style coi đoạn path đầu tiên là tên bucket.
 ## Cài đặt
 
 ```bash
-kubectl apply -f argocd/apps/silo.yaml
+ENV=uat ./scripts/apply-app.sh silo
 kubectl -n silo rollout status statefulset/silo
 ```
 
 ## Console dưới `/silo`
 
+Chart local `charts/silo`. Values của UAT (`environments/uat/values/silo.yaml`):
+
+```yaml
+consoleUrl: http://data-uat.127.0.0.1.nip.io:8080/silo
+persistence:
+  size: 10Gi
+ingress:
+  enabled: true
+  host: data-uat.127.0.0.1.nip.io
+  path: /silo
+```
+
+Chart dùng các giá trị này để dựng:
+
 ```yaml
 env:
   - name: MINIO_BROWSER_REDIRECT_URL
-    value: http://data.127.0.0.1.nip.io:8080/silo   # URL public của console
+    value: http://data-uat.127.0.0.1.nip.io:8080/silo   # URL public của console
 ```
 
 ```yaml
@@ -41,12 +55,12 @@ Console tự đặt `<base href="/silo/">` dựa trên `MINIO_BROWSER_REDIRECT_U
 ## Kiểm tra
 
 ```bash
-B=http://data.127.0.0.1.nip.io:8080
+B=http://data-uat.127.0.0.1.nip.io:8080
 curl -s $B/silo/ | grep -o '<base href="[^"]*"'
 # <base href="/silo/"
 ```
 
-Đăng nhập console bằng `admin` / mật khẩu trong `./scripts/credentials.sh`.
+Đăng nhập console bằng `admin` / mật khẩu trong `ENV=uat ./scripts/credentials.sh`.
 
 Dùng S3 API từ trong cluster:
 

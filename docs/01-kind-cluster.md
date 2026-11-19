@@ -1,19 +1,23 @@
 # 1. Tạo kind cluster
 
 ```bash
-kind create cluster --config kind/cluster.yaml
-kubectl config use-context kind-data-platform
+kind create cluster --config environments/uat/kind-cluster.yaml
+kubectl config use-context kind-data-platform-uat
 kubectl get nodes
 ```
 
 ```text
-NAME                          STATUS   ROLES           AGE   VERSION
-data-platform-control-plane   Ready    control-plane   40s   v1.33.1
+NAME                              STATUS   ROLES           AGE   VERSION
+data-platform-uat-control-plane   Ready    control-plane   40s   v1.33.1
 ```
+
+Các lệnh `kubectl` trong các bước sau đều giả định context đang là
+`kind-data-platform-uat`.
 
 ## Cấu hình
 
 ```yaml
+name: data-platform-uat
 nodes:
   - role: control-plane
     labels:
@@ -30,8 +34,7 @@ nodes:
 ## Vì sao port trong node và trên máy phải giống nhau
 
 Ban đầu lab map `8080 (máy) -> 80 (node)`. Mọi thứ đều chạy, trừ một lỗi:
-**login Airflow xong thì bị redirect sang `http://data.127.0.0.1.nip.io/airflow/`
-(mất `:8080`)**.
+**login Airflow xong thì bị redirect sang URL mất `:8080`**.
 
 Nguyên nhân:
 
@@ -45,15 +48,13 @@ Cho nginx listen đúng 8080 bên trong node thì `X-Forwarded-Port: 8080` khớ
 URL trình duyệt đang dùng, và mọi app dựng redirect đúng. Lakekeeper cũng đọc
 `X-Forwarded-Port`, nên cách sửa này áp dụng chung cho cả stack.
 
-Port mapping của kind chỉ đặt được **lúc tạo cluster**. Muốn đổi port thì phải
-xoá và tạo lại cluster.
+Port mapping của kind chỉ đặt được **lúc tạo cluster**; muốn đổi port thì phải
+xoá và tạo lại cluster. Port xuất hiện ở ba chỗ và phải khớp nhau:
 
-## Muốn dùng port 80
-
-Nếu port 80 trên máy đang trống, đổi cả bốn chỗ cho thống nhất:
-
-- `kind/cluster.yaml`: `containerPort`/`hostPort` thành 80/443
-- `values/ingress-nginx.yaml`: `containerPort`, `hostPort.ports`, `http-port`, `https-port`
-- Bỏ `:8080` khỏi URL: `grep -rl 'nip.io:8080' values manifests scripts | xargs sed -i '' 's/nip.io:8080/nip.io/g'`
+| File | Giá trị |
+|---|---|
+| `environments/uat/kind-cluster.yaml` | `containerPort` / `hostPort` |
+| `environments/uat/values/ingress-nginx.yaml` | `containerPort`, `hostPort.ports`, `http-port`, `https-port` |
+| `environments/uat/env.sh` + các `values/*.yaml` của UAT | `HTTP_PORT` và URL public |
 
 Tiếp theo: [2. Secrets](02-secrets.md)

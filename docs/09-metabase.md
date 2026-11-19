@@ -1,27 +1,38 @@
 # 9. Metabase
 
-<http://data.127.0.0.1.nip.io:8080/metabase/>. Lần đầu vào sẽ có trang setup
+<http://data-uat.127.0.0.1.nip.io:8080/metabase/>. Lần đầu vào sẽ có trang setup
 để tạo tài khoản admin.
 
 ## Cài đặt
 
 ```bash
-kubectl apply -f argocd/apps/metabase.yaml
+ENV=uat ./scripts/apply-app.sh metabase
 kubectl -n metabase rollout status deploy/metabase --timeout=10m
 ```
 
-Metabase không có Helm chart chính thức, nên dùng manifest thuần ở
-`manifests/metabase/`.
+Metabase không có Helm chart chính thức, nên repo có chart local
+`charts/metabase`.
 
 ## Chạy dưới `/metabase`
 
-Metabase luôn listen ở `/`, nên làm hai việc:
+Metabase luôn listen ở `/`, nên làm hai việc. Môi trường chỉ cần khai báo
+(`environments/uat/values/metabase.yaml`):
+
+```yaml
+siteUrl: http://data-uat.127.0.0.1.nip.io:8080/metabase/
+ingress:
+  enabled: true
+  host: data-uat.127.0.0.1.nip.io
+  path: /metabase
+```
+
+Chart dựng ra:
 
 ```yaml
 # 1. Báo URL public cho Metabase để nó dựng link và <base href> đúng
 env:
   - name: MB_SITE_URL
-    value: http://data.127.0.0.1.nip.io:8080/metabase/
+    value: http://data-uat.127.0.0.1.nip.io:8080/metabase/
 ```
 
 ```yaml
@@ -34,7 +45,8 @@ paths:
     pathType: ImplementationSpecific
 ```
 
-Metadata lưu trong Postgres chung:
+Metadata lưu trong Postgres chung (`values/common/metabase.yaml` ->
+`database.*`):
 
 ```yaml
 - { name: MB_DB_TYPE,   value: postgres }
@@ -48,7 +60,7 @@ Metadata lưu trong Postgres chung:
 ## Kiểm tra
 
 ```bash
-B=http://data.127.0.0.1.nip.io:8080
+B=http://data-uat.127.0.0.1.nip.io:8080
 curl -s $B/metabase/api/health                                  # {"status":"ok"}
 curl -s -H 'Accept: text/html' $B/metabase/ | grep -o '<base href="[^"]*"'
 # <base href="/metabase/"

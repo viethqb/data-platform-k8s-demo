@@ -2,42 +2,56 @@
 
 ## Cài đặt
 
-Cài bằng Helm trước, vì Argo CD cần ingress để có UI. Ở bước 4, Argo CD sẽ
-"nhận" (adopt) chính release này qua `argocd/apps/ingress-nginx.yaml`, với
-cùng chart version và cùng values.
+Cài bằng Helm từ chart trong repo trước, vì Argo CD cần ingress để có UI. Ở
+bước 4, Argo CD sẽ "nhận" (adopt) chính release này với cùng chart và cùng
+values.
 
 ```bash
-helm upgrade --install ingress-nginx ingress-nginx \
-  --repo https://kubernetes.github.io/ingress-nginx --version 4.15.1 \
-  -n ingress-nginx -f values/ingress-nginx.yaml --wait
+helm upgrade --install ingress-nginx charts/ingress-nginx -n ingress-nginx \
+  -f values/common/ingress-nginx.yaml \
+  -f environments/uat/values/ingress-nginx.yaml \
+  --wait
 
 kubectl -n ingress-nginx get pods
-curl -s -o /dev/null -w '%{http_code}\n' http://data.127.0.0.1.nip.io:8080/
+curl -s -o /dev/null -w '%{http_code}\n' http://data-uat.127.0.0.1.nip.io:8080/
 # 404: nginx đã nhận request, chỉ là chưa có Ingress nào
 ```
 
-## Values quan trọng
+## Values
+
+`values/common/ingress-nginx.yaml`: phần giống nhau ở mọi môi trường kind.
+
+```yaml
+controller:
+  hostPort:
+    enabled: true
+  nodeSelector:
+    ingress-ready: "true"
+  service:
+    type: NodePort
+  config:
+    proxy-body-size: "0"       # upload file lớn (Silo console, Metabase)
+```
+
+`environments/uat/values/ingress-nginx.yaml`: port của UAT.
 
 ```yaml
 controller:
   containerPort: { http: 8080, https: 8443 }
   hostPort:
-    enabled: true
     ports: { http: 8080, https: 8443 }
   extraArgs:
     http-port: "8080"          # nginx listen 8080 -> X-Forwarded-Port: 8080
     https-port: "8443"
   admissionWebhooks:
     port: 9443                 # mặc định 8443, sẽ đụng với HTTPS ở trên
-  config:
-    proxy-body-size: "0"       # upload file lớn (Silo console, Metabase)
 ```
 
 ## Một host, nhiều path
 
 Mỗi app có Ingress riêng trong namespace của nó, tất cả cùng
-`host: data.127.0.0.1.nip.io`, và ingress-nginx gộp chúng thành một server
-block. App được chia làm hai nhóm:
+`host: data-uat.127.0.0.1.nip.io`, và ingress-nginx gộp chúng thành một
+server block. App được chia làm hai nhóm:
 
 **Nhóm 1: app tự hiểu prefix, ingress KHÔNG strip.** App được cấu hình để tự
 phục vụ ở `/argocd`, `/airflow`, `/ranger`. Ingress chỉ cần `pathType: Prefix`:
@@ -59,12 +73,15 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: /$2
 spec:
   rules:
-    - host: data.127.0.0.1.nip.io
+    - host: data-uat.127.0.0.1.nip.io
       http:
         paths:
           - path: /metabase(/|$)(.*)       # /metabase/api/health -> /api/health
             pathType: ImplementationSpecific
 ```
+
+Ba chart local (`silo`, `metabase`, `ranger-admin`) đã dựng sẵn các Ingress
+này; môi trường chỉ cần khai báo `ingress.enabled`, `ingress.host` và path.
 
 ## Lưu ý
 

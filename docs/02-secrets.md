@@ -87,7 +87,7 @@ chưa tồn tại**, nên chạy lại script không làm đổi mật khẩu đ
 Xem lại mật khẩu bất kỳ lúc nào:
 
 ```bash
-./scripts/credentials.sh
+ENV=uat ./scripts/credentials.sh
 ```
 
 Tiếp theo: [3. ingress-nginx](03-ingress-nginx.md)

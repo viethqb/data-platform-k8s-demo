@@ -21,13 +21,13 @@ root             Synced   Healthy
 silo             Synced   Healthy
 ```
 
-(Dòng `root` chỉ có nếu bạn đã apply `argocd/root.yaml`.)
+(Dòng `root` chỉ có nếu bạn chạy `scripts/bootstrap.sh` thay vì cài từng app.)
 
 Gọi thử từng path. Header `Accept: text/html` để server trả về trang như cho
 trình duyệt:
 
 ```bash
-B=http://data.127.0.0.1.nip.io:8080
+B=http://data-uat.127.0.0.1.nip.io:8080
 for p in /argocd/ /airflow/ /metabase/ /lakekeeper/ui/ /silo/ /ranger/login.jsp; do
   printf '%-18s ' "$p"
   curl -s -o /dev/null -H 'Accept: text/html' -w '%{http_code}\n' "$B$p"
@@ -78,26 +78,27 @@ kubectl -n argocd get app <app> -o jsonpath='{.status.operationState.message}'
 
 ```bash
 # Dừng (giữ nguyên dữ liệu)
-docker stop data-platform-control-plane
+docker stop data-platform-uat-control-plane
 
 # Chạy lại
-docker start data-platform-control-plane
-kubectl --context kind-data-platform get nodes
+docker start data-platform-uat-control-plane
+kubectl --context kind-data-platform-uat get nodes
 
 # Xoá hẳn (mất toàn bộ dữ liệu và mật khẩu đã sinh)
-./scripts/destroy.sh
+ENV=uat ./scripts/destroy.sh
 ```
 
 Sau khi `docker start`, chờ 1-2 phút để các pod khởi động lại. Ranger cần lâu
 hơn vì chạy lại `setup.sh`.
 
-## Đổi host
+## Đổi host của một môi trường
 
-Host `data.127.0.0.1.nip.io:8080` nằm trong values và manifest:
+Host và port của UAT nằm trong `environments/uat/` (`env.sh` và `values/*.yaml`):
 
 ```bash
-grep -rl 'data.127.0.0.1.nip.io' values manifests scripts \
-  | xargs sed -i '' 's/data.127.0.0.1.nip.io/your.host/g'
+grep -rl 'data-uat.127.0.0.1.nip.io' environments/uat \
+  | xargs sed -i '' 's/data-uat.127.0.0.1.nip.io/your.host/g'
+ENV=uat ./scripts/render.sh
 ```
 
 Commit, push, và Argo CD sẽ tự áp thay đổi.
