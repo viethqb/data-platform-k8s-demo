@@ -2,3 +2,4 @@
 *.local.yaml
 .DS_Store
 .playwright-mcp/
+.certs/

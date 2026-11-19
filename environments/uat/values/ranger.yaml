@@ -1,4 +1,4 @@
-externalUrl: http://data-uat.127.0.0.1.nip.io:8080/ranger
+externalUrl: https://data-uat.127.0.0.1.nip.io/ranger
 ingress:
   enabled: true
   host: data-uat.127.0.0.1.nip.io

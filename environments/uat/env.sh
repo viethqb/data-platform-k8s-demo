@@ -1,6 +1,7 @@
 # UAT environment settings, sourced by scripts/*.sh.
-# Host/port also appear in values/*.yaml of this environment; keep them in sync.
+# The host also appears in values/*.yaml of this environment; keep them in sync.
 CLUSTER_NAME=data-platform-uat
 HOST=data-uat.127.0.0.1.nip.io
-HTTP_PORT=8080
-HTTPS_PORT=8443
+PUBLIC_URL=https://data-uat.127.0.0.1.nip.io
+# TLS certificate for HOST (mkcert if installed, else a self-signed CA).
+TLS_SECRET=platform-tls

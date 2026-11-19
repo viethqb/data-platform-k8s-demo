@@ -1,7 +1,7 @@
 # kind cluster for UAT.
-# ingress-nginx listens on 8080/8443 inside the node and the same ports are
-# published on the host, so X-Forwarded-Port matches the browser URL and apps
-# build redirects with the right port.
+# ingress-nginx listens on 80/443 inside the node and the same ports are
+# published on the host, so X-Forwarded-Port/Proto match the browser URL
+# (https://data-uat.127.0.0.1.nip.io) and apps build correct redirects.
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 name: data-platform-uat
@@ -10,11 +10,11 @@ nodes:
     labels:
       ingress-ready: "true"
     extraPortMappings:
-      - containerPort: 8080
-        hostPort: 8080
+      - containerPort: 80
+        hostPort: 80
         listenAddress: "127.0.0.1"
         protocol: TCP
-      - containerPort: 8443
-        hostPort: 8443
+      - containerPort: 443
+        hostPort: 443
         listenAddress: "127.0.0.1"
         protocol: TCP

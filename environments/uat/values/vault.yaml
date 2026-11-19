@@ -1,0 +1,10 @@
+server:
+  dataStorage:
+    size: 2Gi
+  ingress:
+    hosts:
+      - host: data-uat.127.0.0.1.nip.io
+        # Vault's UI and API live at fixed root paths; no other app uses them.
+        paths:
+          - /ui
+          - /v1

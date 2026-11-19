@@ -15,6 +15,18 @@ apps:
     wave: -3
     finalizer: false          # never cascade-delete Argo CD itself
     syncOptions: [ServerSideApply=true]
+  vault:
+    namespace: vault
+    wave: -2
+    syncOptions: [ServerSideApply=true]
+  external-secrets:
+    namespace: external-secrets
+    wave: -2
+    syncOptions: [ServerSideApply=true]
+  platform-secrets:
+    namespace: external-secrets
+    wave: -1
+    syncOptions: [SkipDryRunOnMissingResource=true]
   cloudnative-pg:
     namespace: cnpg-system
     wave: -2

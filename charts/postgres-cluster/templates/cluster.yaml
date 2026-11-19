@@ -3,6 +3,7 @@ kind: Cluster
 metadata:
   name: {{ .Values.clusterName }}
 spec:
+  imageName: {{ .Values.imageName }}
   instances: {{ .Values.instances }}
   storage:
     size: {{ .Values.storage.size }}

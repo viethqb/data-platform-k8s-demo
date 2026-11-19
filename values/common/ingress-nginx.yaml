@@ -1,6 +1,15 @@
 # ingress-nginx on kind: run on the node labelled ingress-ready and bind
 # hostPorts. Listen ports are environment-specific (see environments/<env>).
 controller:
+  # Reference images by tag only, so images preloaded with `kind load`
+  # (scripts/preload-images.sh) are used instead of re-pulling by digest.
+  image:
+    digest: ""
+    digestChroot: ""
+  admissionWebhooks:
+    patch:
+      image:
+        digest: ""
   hostPort:
     enabled: true
   nodeSelector:

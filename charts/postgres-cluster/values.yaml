@@ -1,5 +1,7 @@
 # -- Name of the CNPG Cluster (service becomes <name>-rw).
 clusterName: pg
+# -- PostgreSQL image (pinned; also preloaded by scripts/preload-images.sh).
+imageName: ghcr.io/cloudnative-pg/postgresql:18.7-system-trixie
 instances: 1
 storage:
   size: 5Gi

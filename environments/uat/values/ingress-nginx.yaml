@@ -1,15 +1,16 @@
-# Listen on the same ports kind publishes on the host (environments/uat/kind-cluster.yaml).
+# Listen on 80/443, the same ports kind publishes on the host.
 controller:
   containerPort:
-    http: 8080
-    https: 8443
+    http: 80
+    https: 443
   hostPort:
     ports:
-      http: 8080
-      https: 8443
+      http: 80
+      https: 443
   extraArgs:
-    http-port: "8080"
-    https-port: "8443"
-  admissionWebhooks:
-    # Default 8443 would clash with the HTTPS listener above.
-    port: 9443
+    # Certificate for every Ingress without its own tls section
+    # (created by scripts/bootstrap.sh from mkcert / a local CA).
+    default-ssl-certificate: ingress-nginx/platform-tls
+  config:
+    # Redirect all HTTP to HTTPS, also for Ingresses without a tls section.
+    force-ssl-redirect: "true"
