@@ -20,7 +20,7 @@
 ################################
 ## Airflow Redis NetworkPolicy
 #################################
-{{- if and .Values.redis.enabled .Values.networkPolicies.enabled (or (eq .Values.executor "CeleryExecutor") (eq .Values.executor "CeleryKubernetesExecutor")) }}
+{{- if and .Values.redis.enabled .Values.networkPolicies.enabled (or (contains "CeleryExecutor" .Values.executor) (contains "CeleryKubernetesExecutor" .Values.executor)) }}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -31,8 +31,8 @@ metadata:
     release: {{ .Release.Name }}
     chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
     heritage: {{ .Release.Service }}
-    {{- with .Values.labels }}
-      {{- toYaml . | nindent 4 }}
+    {{- if or .Values.labels .Values.redis.labels }}
+      {{- mustMerge .Values.redis.labels .Values.labels | toYaml | nindent 4 }}
     {{- end }}
 spec:
   podSelector:

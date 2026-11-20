@@ -1,0 +1,95 @@
+{{- /*
+A plain Job (not an Argo CD hook): an app that only contains hooks is always
+"Synced", so auto-sync never starts an operation and the hook never runs.
+The name carries a checksum of the values, so a config change creates a new
+Job and Argo CD prunes the old one. Every step is idempotent.
+*/}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: polaris-setup-{{ .Values | toJson | sha256sum | trunc 8 }}
+spec:
+  backoffLimit: 10
+  template:
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+        # 1. bucket in Silo
+        - name: bucket
+          image: {{ .Values.images.mc }}
+          env:
+            - name: S3_ACCESS_KEY
+              valueFrom: { secretKeyRef: { name: {{ .Values.storageSecret }}, key: awsAccessKeyId } }
+            - name: S3_SECRET_KEY
+              valueFrom: { secretKeyRef: { name: {{ .Values.storageSecret }}, key: awsSecretAccessKey } }
+            - name: MC_HOST_silo
+              value: "{{ regexReplaceAll "://" .Values.s3.endpoint "://$(S3_ACCESS_KEY):$(S3_SECRET_KEY)@" }}"
+          args: ["mb", "--ignore-existing", "silo/{{ .Values.s3.bucket }}"]
+        # 2. realm + root principal (idempotent)
+        - name: bootstrap
+          image: {{ .Values.images.adminTool }}
+          env:
+            - name: polaris.persistence.type
+              value: relational-jdbc
+            - name: quarkus.datasource.jdbc.additional-jdbc-properties.currentSchema
+              value: POLARIS_SCHEMA
+            - name: quarkus.datasource.username
+              valueFrom: { secretKeyRef: { name: {{ .Values.persistenceSecret }}, key: username } }
+            - name: quarkus.datasource.password
+              valueFrom: { secretKeyRef: { name: {{ .Values.persistenceSecret }}, key: password } }
+            - name: quarkus.datasource.jdbc.url
+              valueFrom: { secretKeyRef: { name: {{ .Values.persistenceSecret }}, key: jdbcUrl } }
+            - name: ROOT_CREDENTIAL
+              valueFrom: { secretKeyRef: { name: {{ .Values.rootSecret }}, key: credential } }
+          args: ["bootstrap", "-r", "{{ .Values.realm }}", "-c", "$(ROOT_CREDENTIAL)"]
+      containers:
+        # 3. default catalog backed by Silo
+        - name: catalog
+          image: {{ .Values.images.curl }}
+          env:
+            - name: CLIENT_ID
+              valueFrom: { secretKeyRef: { name: {{ .Values.rootSecret }}, key: client-id } }
+            - name: CLIENT_SECRET
+              valueFrom: { secretKeyRef: { name: {{ .Values.rootSecret }}, key: client-secret } }
+          command: ["sh", "-ec"]
+          args:
+            - |
+              API={{ .Values.polarisUrl }}/api
+              REALM={{ .Values.realm }}
+              until curl -sf -o /dev/null {{ .Values.polarisHealthUrl }}; do
+                echo "waiting for Polaris"; sleep 5
+              done
+              TOKEN=$(curl -sf "$API/catalog/v1/oauth/tokens" -H "Polaris-Realm: $REALM" \
+                --user "$CLIENT_ID:$CLIENT_SECRET" \
+                -d grant_type=client_credentials -d scope=PRINCIPAL_ROLE:ALL \
+                | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p')
+              [ -n "$TOKEN" ] || { echo "could not get a token"; exit 1; }
+              code=$(curl -s -o /tmp/out -w '%{http_code}' "$API/management/v1/catalogs" \
+                -H "Authorization: Bearer $TOKEN" -H "Polaris-Realm: $REALM" \
+                -H 'Content-Type: application/json' -d '{
+                  "catalog": {
+                    "name": "{{ .Values.catalog.name }}",
+                    "type": "INTERNAL",
+                    "properties": { "default-base-location": "{{ .Values.catalog.baseLocation }}" },
+                    "storageConfigInfo": {
+                      "storageType": "S3",
+                      "allowedLocations": ["{{ .Values.catalog.baseLocation }}"],
+                      "endpoint": "{{ .Values.s3.endpoint }}",
+                      "endpointInternal": "{{ .Values.s3.endpoint }}",
+                      "pathStyleAccess": true,
+                      "region": "{{ .Values.s3.region }}",
+                      "stsUnavailable": true
+                    }
+                  }
+                }')
+              case "$code" in
+                201) echo "created catalog {{ .Values.catalog.name }}" ;;
+                409) echo "catalog {{ .Values.catalog.name }} already exists" ;;
+                *) echo "create catalog failed: HTTP $code"; cat /tmp/out; exit 1 ;;
+              esac
+              # Let the catalog admin role manage tables (root holds catalog_admin)
+              curl -sf -X PUT "$API/management/v1/catalogs/{{ .Values.catalog.name }}/catalog-roles/catalog_admin/grants" \
+                -H "Authorization: Bearer $TOKEN" -H "Polaris-Realm: $REALM" \
+                -H 'Content-Type: application/json' \
+                -d '{"type":"catalog","privilege":"CATALOG_MANAGE_CONTENT"}' >/dev/null
+              echo "polaris setup done"

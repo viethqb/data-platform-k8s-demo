@@ -21,8 +21,6 @@
 ## Airflow Pod Launcher Role Binding
 #################################
 {{- if and .Values.rbac.create .Values.allowPodLaunching }}
-{{- $schedulerLaunchExecutors := list "LocalExecutor" "LocalKubernetesExecutor" "KubernetesExecutor" "CeleryKubernetesExecutor" }}
-{{- $workerLaunchExecutors := list "CeleryExecutor" "LocalKubernetesExecutor" "KubernetesExecutor" "CeleryKubernetesExecutor" }}
 apiVersion: rbac.authorization.k8s.io/v1
 {{- if .Values.multiNamespaceMode }}
 kind: ClusterRoleBinding
@@ -57,14 +55,24 @@ roleRef:
   name: {{ include "airflow.fullname" . }}-pod-launcher-role
   {{- end }}
 subjects:
-  {{- if has .Values.executor $schedulerLaunchExecutors }}
+  {{- if and .Values.scheduler.enabled (or (contains "LocalExecutor" .Values.executor) (contains "KubernetesExecutor" .Values.executor) (contains "LocalKubernetesExecutor" .Values.executor) (contains "CeleryKubernetesExecutor" .Values.executor)) }}
   - kind: ServiceAccount
-    name: {{ include "scheduler.serviceAccountName" . }}
-    namespace: "{{ .Release.Namespace }}"
+    name: {{ include "scheduler.serviceAccountName" $ }}
+    namespace: "{{ $.Release.Namespace }}"
   {{- end }}
-  {{- if has .Values.executor $workerLaunchExecutors }}
+  {{- if or (contains "CeleryExecutor" .Values.executor) (contains "CeleryKubernetesExecutor" .Values.executor) (and (or (contains "KubernetesExecutor" .Values.executor) (contains "LocalKubernetesExecutor" .Values.executor)) (eq .Values.workers.kubernetes.serviceAccount.create nil)) }}
   - kind: ServiceAccount
-    name: {{ include "worker.serviceAccountName" . }}
+    name: {{ include "worker.serviceAccountName" $ }}
+    namespace: "{{ $.Release.Namespace }}"
+  {{- end }}
+  {{- if and (or .Values.workers.kubernetes.serviceAccount.create .Values.workers.kubernetes.serviceAccount.name) (contains "KubernetesExecutor" .Values.executor) }}
+  - kind: ServiceAccount
+    name: {{ include "worker.kubernetes.serviceAccountName" $ }}
+    namespace: "{{ $.Release.Namespace }}"
+  {{- end }}
+  {{- if .Values.triggerer.enabled }}
+  - kind: ServiceAccount
+    name: {{ include "triggerer.serviceAccountName" . }}
     namespace: "{{ .Release.Namespace }}"
   {{- end }}
 {{- end }}

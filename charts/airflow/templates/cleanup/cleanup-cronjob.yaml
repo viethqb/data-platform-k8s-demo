@@ -20,13 +20,14 @@
 ################################
 ## Airflow Cleanup Pods CronJob
 #################################
-{{- if .Values.cleanup.enabled }}
+{{- if and .Values.cleanup.enabled (contains "KubernetesExecutor" .Values.executor) }}
 {{- $nodeSelector := or .Values.cleanup.nodeSelector .Values.nodeSelector }}
 {{- $affinity := or .Values.cleanup.affinity .Values.affinity }}
 {{- $tolerations := or .Values.cleanup.tolerations .Values.tolerations }}
 {{- $topologySpreadConstraints := or .Values.cleanup.topologySpreadConstraints .Values.topologySpreadConstraints }}
-{{- $securityContext := include "airflowPodSecurityContext" (list . .Values.cleanup) }}
-{{- $containerSecurityContext := include "containerSecurityContext" (list . .Values.cleanup) }}
+{{- $securityContext := include "airflowPodSecurityContext" (list .Values.cleanup .Values) }}
+{{- $containerSecurityContext := include "containerSecurityContext" (list .Values.cleanup .Values) }}
+{{- $containerLifecycleHooks := or .Values.cleanup.containerLifecycleHooks .Values.containerLifecycleHooks }}
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -34,8 +35,8 @@ metadata:
   labels:
     tier: airflow
     component: airflow-cleanup-pods
-    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
     release: {{ .Release.Name }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
     heritage: {{ .Release.Service }}
     {{- with .Values.labels }}
       {{- toYaml . | nindent 4 }}
@@ -47,10 +48,10 @@ spec:
   schedule: "{{ tpl .Values.cleanup.schedule . }}"
   # The cron job does not allow concurrent runs; if it is time for a new job run and the previous job run hasn't finished yet, the cron job skips the new job run
   concurrencyPolicy: Forbid
-  {{- if .Values.cleanup.failedJobsHistoryLimit }}
+  {{- if not (eq .Values.cleanup.failedJobsHistoryLimit nil) }}
   failedJobsHistoryLimit: {{ .Values.cleanup.failedJobsHistoryLimit }}
   {{- end }}
-  {{- if .Values.cleanup.successfulJobsHistoryLimit }}
+  {{- if not (eq .Values.cleanup.successfulJobsHistoryLimit nil) }}
   successfulJobsHistoryLimit: {{ .Values.cleanup.successfulJobsHistoryLimit }}
   {{- end }}
   jobTemplate:
@@ -62,19 +63,21 @@ spec:
             tier: airflow
             component: airflow-cleanup-pods
             release: {{ .Release.Name }}
-            {{- if or (.Values.labels) (.Values.cleanup.labels) }}
+            {{- if or .Values.labels .Values.cleanup.labels }}
               {{- mustMerge .Values.cleanup.labels .Values.labels | toYaml | nindent 12 }}
             {{- end }}
           annotations:
-            sidecar.istio.io/inject: "false"
             {{- if .Values.airflowPodAnnotations }}
-              {{- toYaml .Values.airflowPodAnnotations | nindent 12 }}
+              {{- tpl (toYaml .Values.airflowPodAnnotations) . | nindent 12 }}
             {{- end }}
             {{- if .Values.cleanup.podAnnotations }}
-              {{- toYaml .Values.cleanup.podAnnotations | nindent 12 }}
+              {{- tpl (toYaml .Values.cleanup.podAnnotations) . | nindent 12 }}
             {{- end }}
         spec:
           restartPolicy: Never
+          {{- if .Values.cleanup.priorityClassName }}
+          priorityClassName: {{ .Values.cleanup.priorityClassName }}
+          {{- end }}
           nodeSelector: {{- toYaml $nodeSelector | nindent 12 }}
           affinity: {{- toYaml $affinity | nindent 12 }}
           {{- if .Values.schedulerName }}
@@ -83,16 +86,17 @@ spec:
           tolerations: {{- toYaml $tolerations | nindent 12 }}
           topologySpreadConstraints: {{- toYaml $topologySpreadConstraints | nindent 12 }}
           serviceAccountName: {{ include "cleanup.serviceAccountName" . }}
-          {{- if or .Values.registry.secretName .Values.registry.connection }}
-          imagePullSecrets:
-            - name: {{ template "registry_secret" . }}
-          {{- end }}
+          {{- include "serviceLinks" . | nindent 10 }}
+          imagePullSecrets: {{- include "image_pull_secrets" . | nindent 12 }}
           securityContext: {{ $securityContext | nindent 12 }}
           containers:
             - name: airflow-cleanup-pods
               image: {{ template "airflow_image" . }}
               imagePullPolicy: {{ .Values.images.airflow.pullPolicy }}
               securityContext: {{ $containerSecurityContext | nindent 16 }}
+              {{- if $containerLifecycleHooks }}
+              lifecycle: {{- tpl (toYaml $containerLifecycleHooks) . | nindent 16 }}
+              {{- end }}
               {{- if .Values.cleanup.command }}
               command: {{ tpl (toYaml .Values.cleanup.command) . | nindent 16 }}
               {{- end }}
@@ -102,10 +106,20 @@ spec:
               env:
                 {{- include "standard_airflow_environment" . | indent 12 }}
                 {{- include "container_extra_envs" (list . .Values.cleanup.env) | indent 12 }}
-              volumeMounts: {{- include "airflow_config_mount" . | nindent 16 }}
+              volumeMounts:
+                {{- include "airflow_config_mount" . | nindent 16 }}
+                {{- if .Values.volumeMounts }}
+                  {{- toYaml .Values.volumeMounts | nindent 16 }}
+                {{- end }}
+                {{- include "serviceAccountTokenVolumeMount" (list . .Values.cleanup.serviceAccount)  | nindent 16 }}
               resources: {{- toYaml .Values.cleanup.resources | nindent 16 }}
           volumes:
             - name: config
               configMap:
                 name: {{ template "airflow_config" . }}
+            {{- if .Values.volumes }}
+              {{- toYaml .Values.volumes | nindent 12 }}
+            {{- end }}
+            {{- include "serviceAccountTokenVolume" (list . .Values.cleanup.serviceAccount) | nindent 12 }}
+
 {{- end }}

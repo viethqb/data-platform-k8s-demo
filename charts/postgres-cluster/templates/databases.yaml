@@ -1,0 +1,21 @@
+{{- range .Values.databases }}
+{{- $db := .name }}
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: {{ $db }}
+spec:
+  cluster:
+    name: {{ $.Values.clusterName }}
+  name: {{ $db }}
+  owner: {{ $db }}
+  {{- with .schemas }}
+  schemas:
+    {{- range . }}
+    - name: {{ . }}
+      owner: {{ $db }}
+      ensure: present
+    {{- end }}
+  {{- end }}
+{{- end }}

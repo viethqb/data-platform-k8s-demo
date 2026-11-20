@@ -1,8 +1,0 @@
-auth:
-  rootUser: admin
-  rootPassword: "password"
-ingress:
-  enabled: true
-  ingressClassName: "nginx"
-  hostname: minio.lakehouse.local
-defaultBuckets: lakehouse

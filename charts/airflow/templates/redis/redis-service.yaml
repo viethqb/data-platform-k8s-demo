@@ -20,7 +20,7 @@
 ################################
 ## Airflow Redis Service
 #################################
-{{- if and .Values.redis.enabled (or (eq .Values.executor "CeleryExecutor") (eq .Values.executor "CeleryKubernetesExecutor")) }}
+{{- if and .Values.redis.enabled (or (contains "CeleryExecutor" .Values.executor) (contains "CeleryKubernetesExecutor" .Values.executor)) }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -31,11 +31,18 @@ metadata:
     release: {{ .Release.Name }}
     chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
     heritage: {{ .Release.Service }}
-    {{- with .Values.labels }}
-      {{- toYaml . | nindent 4 }}
+    {{- if or .Values.labels .Values.redis.labels }}
+      {{- mustMerge .Values.redis.labels .Values.labels | toYaml | nindent 4 }}
     {{- end }}
 spec:
+{{- if eq .Values.redis.service.type "ClusterIP" }}
   type: ClusterIP
+  {{- if .Values.redis.service.clusterIP }}
+  clusterIP: {{ .Values.redis.service.clusterIP }}
+  {{- end }}
+{{- else }}
+  type: {{ .Values.redis.service.type }}
+{{- end }}
   selector:
     tier: airflow
     component: redis
@@ -45,4 +52,7 @@ spec:
       protocol: TCP
       port: {{ .Values.ports.redisDB }}
       targetPort: {{ .Values.ports.redisDB }}
+      {{- if and (eq .Values.redis.service.type "NodePort") (not (empty .Values.redis.service.nodePort)) }}
+      nodePort: {{ .Values.redis.service.nodePort }}
+      {{- end }}
 {{- end }}

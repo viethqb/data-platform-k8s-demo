@@ -1,0 +1,5 @@
+apiVersion: v2
+name: platform-secrets
+description: ClusterSecretStore for Vault + one ExternalSecret per Kubernetes Secret the platform needs
+type: application
+version: 0.1.0

@@ -1,0 +1,5 @@
+siteUrl: https://data-uat.127.0.0.1.nip.io/metabase/
+ingress:
+  enabled: true
+  host: data-uat.127.0.0.1.nip.io
+  path: /metabase

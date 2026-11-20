@@ -1,0 +1,5 @@
+apiVersion: v2
+name: platform-apps
+description: App-of-apps. Renders one Argo CD Application per platform component for an environment.
+type: application
+version: 0.1.0

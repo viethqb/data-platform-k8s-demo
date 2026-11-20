@@ -1,0 +1,20 @@
+# HashiCorp Vault, single node with file storage.
+# UI (/ui) and API (/v1) are fixed paths in Vault, so they share the platform
+# host without a sub-path. Init/unseal/config: scripts/vault-setup.sh.
+injector:
+  enabled: false
+server:
+  standalone:
+    enabled: true
+  dataStorage:
+    enabled: true
+  # Vault needs system:auth-delegator to validate ServiceAccount tokens
+  # for the Kubernetes auth method used by External Secrets Operator.
+  authDelegator:
+    enabled: true
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    pathType: Prefix
+ui:
+  enabled: true

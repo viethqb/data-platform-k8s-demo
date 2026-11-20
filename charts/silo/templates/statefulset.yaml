@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}
+  labels: {{- include "silo.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ .Release.Name }}-headless
+  replicas: 1
+  selector:
+    matchLabels: {{- include "silo.selector" . | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "silo.selector" . | nindent 8 }}
+    spec:
+      containers:
+        - name: silo
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["server", "/data", "--address", ":9000", "--console-address", ":9001"]
+          env:
+            {{- with .Values.consoleUrl }}
+            - name: MINIO_BROWSER_REDIRECT_URL
+              value: {{ . | quote }}
+            {{- end }}
+            - name: MINIO_UPDATE
+              value: "off"
+          envFrom:
+            - secretRef:
+                name: {{ .Values.rootSecret }}
+          ports:
+            - name: s3
+              containerPort: 9000
+            - name: console
+              containerPort: 9001
+          readinessProbe:
+            httpGet:
+              path: /minio/health/ready
+              port: s3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /minio/health/live
+              port: s3
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- with .Values.persistence.storageClass }}
+        storageClassName: {{ . }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size }}

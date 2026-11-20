@@ -1,0 +1,6 @@
+ingress:
+  hosts:
+    - host: data-uat.127.0.0.1.nip.io
+      paths:
+        - path: /polaris/api(/|$)(.*)
+          pathType: ImplementationSpecific

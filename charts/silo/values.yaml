@@ -1,0 +1,29 @@
+image:
+  repository: docker.io/pgsty/silo
+  tag: RELEASE.2026-11-12T00-00-00Z
+  pullPolicy: IfNotPresent
+
+# -- Secret with MINIO_ROOT_USER / MINIO_ROOT_PASSWORD (created outside Git).
+rootSecret: silo-root
+
+# -- Public console URL (scheme://host[:port]/path). Required when the console
+# is served under a sub-path; the ingress strips the path.
+consoleUrl: ""
+
+persistence:
+  size: 10Gi
+  storageClass: ""
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 1Gi
+
+ingress:
+  enabled: false
+  className: nginx
+  host: ""
+  # -- Console path prefix, stripped by ingress-nginx.
+  path: /silo

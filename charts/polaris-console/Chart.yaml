@@ -1,0 +1,6 @@
+apiVersion: v2
+name: polaris-console
+description: Apache Polaris Console (apache/polaris-tools) served under a sub-path
+type: application
+version: 0.1.0
+appVersion: 823dddd

@@ -1,0 +1,17 @@
+global:
+  domain: data-uat.127.0.0.1.nip.io
+configs:
+  params:
+    # rootpath mounts the server under /argocd; basehref sets <base href> in
+    # index.html so the SPA loads assets from /argocd/. Both are required.
+    server.rootpath: /argocd
+    server.basehref: /argocd
+  cm:
+    url: https://data-uat.127.0.0.1.nip.io/argocd
+server:
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hostname: data-uat.127.0.0.1.nip.io
+    path: /argocd
+    pathType: Prefix

@@ -25,7 +25,7 @@
 {{- $affinity := or .Values.pgbouncer.affinity .Values.affinity }}
 {{- $tolerations := or .Values.pgbouncer.tolerations .Values.tolerations }}
 {{- $topologySpreadConstraints := or .Values.pgbouncer.topologySpreadConstraints .Values.topologySpreadConstraints }}
-{{- $revisionHistoryLimit := or .Values.pgbouncer.revisionHistoryLimit .Values.revisionHistoryLimit }}
+{{- $revisionHistoryLimit := include "airflow.revisionHistoryLimit" (list .Values.pgbouncer.revisionHistoryLimit .Values.revisionHistoryLimit) }}
 {{- $securityContext := include "localPodSecurityContext" .Values.pgbouncer }}
 {{- $containerSecurityContext := include "externalContainerSecurityContext" .Values.pgbouncer }}
 {{- $containerSecurityContextMetricsExporter := include "externalContainerSecurityContext" .Values.pgbouncer.metricsExporterSidecar }}
@@ -49,7 +49,7 @@ metadata:
   {{- end }}
 spec:
   replicas: {{ .Values.pgbouncer.replicas | default "1" }}
-  {{- if $revisionHistoryLimit }}
+  {{- if ne $revisionHistoryLimit "" }}
   revisionHistoryLimit: {{ $revisionHistoryLimit }}
   {{- end }}
   strategy:
@@ -67,14 +67,14 @@ spec:
         tier: airflow
         component: pgbouncer
         release: {{ .Release.Name }}
-        {{- with .Values.labels }}
-          {{- toYaml . | nindent 8 }}
+        {{- if or .Values.labels .Values.pgbouncer.labels }}
+          {{- mustMerge .Values.pgbouncer.labels .Values.labels | toYaml | nindent 8 }}
         {{- end }}
       annotations:
         checksum/pgbouncer-config-secret: {{ include (print $.Template.BasePath "/secrets/pgbouncer-config-secret.yaml") . | sha256sum }}
         checksum/pgbouncer-certificates-secret: {{ include (print $.Template.BasePath "/secrets/pgbouncer-certificates-secret.yaml") . | sha256sum }}
         {{- if .Values.pgbouncer.podAnnotations }}
-          {{- toYaml .Values.pgbouncer.podAnnotations | nindent 8 }}
+          {{- tpl (toYaml .Values.pgbouncer.podAnnotations) . | nindent 8 }}
         {{- end }}
     spec:
       {{- if .Values.pgbouncer.priorityClassName }}
@@ -88,12 +88,10 @@ spec:
       tolerations: {{- toYaml $tolerations | nindent 8 }}
       topologySpreadConstraints: {{- toYaml $topologySpreadConstraints | nindent 8 }}
       serviceAccountName: {{ include "pgbouncer.serviceAccountName" . }}
+      {{- include "serviceLinks" . | nindent 6 }}
       securityContext: {{ $securityContext | nindent 8 }}
       restartPolicy: Always
-      {{- if or .Values.registry.secretName .Values.registry.connection }}
-      imagePullSecrets:
-        - name: {{ template "registry_secret" . }}
-      {{- end }}
+      imagePullSecrets: {{- include "image_pull_secrets" . | nindent 8 }}
       containers:
         - name: pgbouncer
           image: {{ template "pgbouncer_image" . }}
@@ -118,7 +116,9 @@ spec:
           readinessProbe:
             tcpSocket:
               port: {{ .Values.ports.pgbouncer }}
+          {{- if or .Values.pgbouncer.mountConfigSecret .Values.pgbouncer.ssl.ca .Values.pgbouncer.ssl.cert .Values.pgbouncer.ssl.key .Values.volumeMounts .Values.pgbouncer.extraVolumeMounts }}
           volumeMounts:
+            {{- if .Values.pgbouncer.mountConfigSecret }}
             - name: pgbouncer-config
               subPath: pgbouncer.ini
               mountPath: /etc/pgbouncer/pgbouncer.ini
@@ -127,6 +127,7 @@ spec:
               subPath: users.txt
               mountPath: /etc/pgbouncer/users.txt
               readOnly: true
+            {{- end}}
             {{- if .Values.pgbouncer.ssl.ca }}
             - name: pgbouncer-certificates
               subPath: root.crt
@@ -151,6 +152,7 @@ spec:
             {{- if .Values.pgbouncer.extraVolumeMounts }}
               {{- tpl (toYaml .Values.pgbouncer.extraVolumeMounts) . | nindent 12 }}
             {{- end }}
+          {{- end}}
           {{- if $containerLifecycleHooks }}
           lifecycle: {{- tpl (toYaml $containerLifecycleHooks) . | nindent 12 }}
           {{- end }}
@@ -164,7 +166,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ template "pgbouncer_stats_secret" . }}
-                  {{- if (and .Values.pgbouncer.metricsExporterSidecar.statsSecretName .Values.pgbouncer.metricsExporterSidecar.statsSecretKey) }}
+                  {{- if and .Values.pgbouncer.metricsExporterSidecar.statsSecretName .Values.pgbouncer.metricsExporterSidecar.statsSecretKey }}
                   key: {{ .Values.pgbouncer.metricsExporterSidecar.statsSecretKey }}
                   {{- else }}
                   key: "connection"
@@ -191,14 +193,21 @@ spec:
           {{- if $containerLifecycleHooksMetricsExporter }}
           lifecycle: {{- tpl (toYaml $containerLifecycleHooksMetricsExporter) . | nindent 12 }}
           {{- end }}
+          {{- if .Values.pgbouncer.metricsExporterSidecar.extraVolumeMounts }}
+          volumeMounts:
+            {{- tpl (toYaml .Values.pgbouncer.metricsExporterSidecar.extraVolumeMounts) . | nindent 12 }}
+          {{- end}}
         {{- if .Values.pgbouncer.extraContainers }}
-          {{- toYaml .Values.pgbouncer.extraContainers | nindent 8 }}
+          {{- tpl (toYaml .Values.pgbouncer.extraContainers) . | nindent 8 }}
         {{- end }}
+      {{- if or .Values.pgbouncer.mountConfigSecret .Values.pgbouncer.ssl.ca .Values.pgbouncer.ssl.cert .Values.pgbouncer.ssl.key .Values.volumes .Values.pgbouncer.extraVolumes }}
       volumes:
+        {{- if .Values.pgbouncer.mountConfigSecret }}
         - name: pgbouncer-config
           secret:
             secretName: {{ template "pgbouncer_config_secret" . }}
-        {{- if or .Values.pgbouncer.ssl.ca  .Values.pgbouncer.ssl.cert .Values.pgbouncer.ssl.key }}
+        {{- end}}
+        {{- if or .Values.pgbouncer.ssl.ca .Values.pgbouncer.ssl.cert .Values.pgbouncer.ssl.key }}
         - name: pgbouncer-certificates
           secret:
             secretName: {{ template "pgbouncer_certificates_secret" . }}
@@ -209,4 +218,5 @@ spec:
         {{- if .Values.pgbouncer.extraVolumes }}
           {{- tpl (toYaml .Values.pgbouncer.extraVolumes) . | nindent 8 }}
         {{- end }}
+      {{- end }}
 {{- end }}

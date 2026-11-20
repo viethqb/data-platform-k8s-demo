@@ -1,0 +1,69 @@
+# App-of-apps values for UAT (rendered by charts/platform-apps).
+env: uat
+repoURL: https://github.com/viethqb/data-platform-k8s-demo.git
+targetRevision: main
+
+# Sync waves. The root app waits for every app of a wave to be Healthy
+# (see the Application health check in values/common/argocd.yaml) before it
+# starts the next wave, so heavy apps do not all start at once:
+#   -3 ingress, Argo CD   -2 Vault, ESO, CNPG   -1 secrets   0 Postgres
+#    1 Silo, Polaris       2 Polaris setup/console, Metabase   3 Airflow   4 Ranger
+apps:
+  ingress-nginx:
+    namespace: ingress-nginx
+    wave: -3
+    finalizer: false          # never cascade-delete the ingress
+    syncOptions: [ServerSideApply=true]
+  argocd:
+    chart: argo-cd
+    namespace: argocd
+    wave: -3
+    finalizer: false          # never cascade-delete Argo CD itself
+    syncOptions: [ServerSideApply=true]
+  vault:
+    namespace: vault
+    wave: -2
+    syncOptions: [ServerSideApply=true]
+  external-secrets:
+    namespace: external-secrets
+    wave: -2
+    syncOptions: [ServerSideApply=true]
+  platform-secrets:
+    namespace: external-secrets
+    wave: -1
+    syncOptions: [SkipDryRunOnMissingResource=true]
+  cloudnative-pg:
+    namespace: cnpg-system
+    wave: -2
+    syncOptions: [ServerSideApply=true]
+  postgres:
+    wave: 0
+    chart: postgres-cluster
+    namespace: postgres
+    syncOptions: [SkipDryRunOnMissingResource=true]
+  silo:
+    wave: 1
+    namespace: silo
+  airflow:
+    wave: 3
+    namespace: airflow
+    syncOptions: [ServerSideApply=true]
+  metabase:
+    wave: 2
+    namespace: metabase
+  # Apache Polaris (Iceberg REST catalog): server, setup job, console
+  polaris:
+    namespace: polaris
+    wave: 1
+    syncOptions: [ServerSideApply=true]
+  polaris-setup:
+    namespace: polaris
+    wave: 2
+  polaris-console:
+    namespace: polaris
+    wave: 2
+  ranger:
+    wave: 4
+    chart: ranger-admin
+    releaseName: ranger-admin
+    namespace: ranger

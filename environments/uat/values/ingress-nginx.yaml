@@ -1,0 +1,16 @@
+# Listen on 80/443, the same ports kind publishes on the host.
+controller:
+  containerPort:
+    http: 80
+    https: 443
+  hostPort:
+    ports:
+      http: 80
+      https: 443
+  extraArgs:
+    # Certificate for every Ingress without its own tls section
+    # (created by scripts/bootstrap.sh from mkcert / a local CA).
+    default-ssl-certificate: ingress-nginx/platform-tls
+  config:
+    # Redirect all HTTP to HTTPS, also for Ingresses without a tls section.
+    force-ssl-redirect: "true"

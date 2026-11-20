@@ -1,0 +1,27 @@
+# -- Vault connection used by the ClusterSecretStore.
+vault:
+  server: http://vault.vault.svc:8200
+  # -- KV v2 mount
+  path: secret
+  version: v2
+  auth:
+    mountPath: kubernetes
+    role: external-secrets
+    # -- Audience of the ServiceAccount token ESO requests; must match the
+    # Vault role's `audience` (scripts/vault-setup.sh).
+    audience: vault
+    serviceAccount:
+      name: external-secrets
+      namespace: external-secrets
+
+storeName: vault
+refreshInterval: 1h
+
+# -- Kubernetes Secrets to create. Each entry renders one ExternalSecret.
+#   name/namespace: target Secret
+#   type:           Secret type (default Opaque)
+#   labels:         labels on the target Secret
+#   data:           <secretKey>: {key: <vault path under the mount>, property: <field>}
+#   template:       extra keys rendered with ESO templates ({{ .<secretKey> }}),
+#                   merged with the fetched data
+secrets: []

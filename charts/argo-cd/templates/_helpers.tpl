@@ -1,0 +1,445 @@
+{{/* vim: set filetype=mustache: */}}
+{{/*
+Create controller name and version as used by the chart label.
+Truncated at 52 chars because StatefulSet label 'controller-revision-hash' is limited
+to 63 chars and it includes 10 chars of hash and a separating '-'.
+*/}}
+{{- define "argo-cd.controller.fullname" -}}
+{{- printf "%s-%s" (include "argo-cd.fullname" .) .Values.controller.name | trunc 52 | trimSuffix "-" -}}
+{{- end -}}
+
+{{/*
+Create the name of the controller service account to use
+*/}}
+{{- define "argo-cd.controller.serviceAccountName" -}}
+{{- if .Values.controller.serviceAccount.create -}}
+    {{ default (include "argo-cd.controller.fullname" .) .Values.controller.serviceAccount.name }}
+{{- else -}}
+    {{ default "default" .Values.controller.serviceAccount.name }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Create dex name and version as used by the chart label.
+*/}}
+{{- define "argo-cd.dex.fullname" -}}
+{{- printf "%s-%s" (include "argo-cd.fullname" .) .Values.dex.name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{/*
+Create Dex server endpoint
+*/}}
+{{- define "argo-cd.dex.server" -}}
+{{- $insecure := index .Values.configs.params "dexserver.disable.tls" | toString -}}
+{{- $scheme := (eq $insecure "true") | ternary "http" "https" -}}
+{{- $host := include "argo-cd.dex.fullname" . -}}
+{{- $port := int .Values.dex.servicePortHttp -}}
+{{- printf "%s://%s:%d" $scheme $host $port }}
+{{- end }}
+
+{{/*
+Dex storage type: dex.storage.type, else storage.type from configs.cm."dex.config", else memory
+*/}}
+{{- define "argo-cd.dex.storageType" -}}
+{{- $config := dig "dex.config" "" .Values.configs.cm | fromYaml | default dict -}}
+{{- .Values.dex.storage.type | default (dig "storage" "type" "memory" $config) -}}
+{{- end -}}
+
+{{/*
+Create the name of the dex service account to use
+*/}}
+{{- define "argo-cd.dex.serviceAccountName" -}}
+{{- if .Values.dex.serviceAccount.create -}}
+    {{ default (include "argo-cd.dex.fullname" .) .Values.dex.serviceAccount.name }}
+{{- else -}}
+    {{ default "default" .Values.dex.serviceAccount.name }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Create redis name and version as used by the chart label.
+*/}}
+{{- define "argo-cd.redis.fullname" -}}
+{{- $redisHa := (index .Values "redis-ha") -}}
+{{- $redisHaContext := dict "Chart" (dict "Name" "redis-ha") "Release" .Release "Values" $redisHa -}}
+{{- if $redisHa.enabled -}}
+    {{- if $redisHa.haproxy.enabled -}}
+        {{- printf "%s-haproxy" (include "redis-ha.fullname" $redisHaContext) | trunc 63 | trimSuffix "-" -}}
+    {{- else -}}
+        {{- include "redis-ha.fullname" $redisHaContext | trunc 63 | trimSuffix "-" -}}
+    {{- end -}}
+{{- else -}}
+{{- printf "%s-%s" (include "argo-cd.fullname" .) .Values.redis.name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return true when the single node Redis serves TLS
+*/}}
+{{- define "argo-cd.redis.tlsEnabled" -}}
+{{- $redisHa := (index .Values "redis-ha") -}}
+{{- if and .Values.redis.enabled (not $redisHa.enabled) .Values.redis.tls.enabled -}}
+true
+{{- end -}}
+{{- end -}}
+
+{{/*
+Arguments that connect an Argo CD component to the single node Redis over TLS
+*/}}
+{{- define "argo-cd.redis.tlsArgs" -}}
+{{- if include "argo-cd.redis.tlsEnabled" . -}}
+- --redis-use-tls
+{{- if .Values.redis.tls.caCertFile }}
+- --redis-ca-certificate=/app/config/redis-tls/ca.crt
+{{- end }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Volume mount of the CA that an Argo CD component verifies the single node Redis with
+*/}}
+{{- define "argo-cd.redis.tlsCaVolumeMount" -}}
+{{- if and (include "argo-cd.redis.tlsEnabled" .) .Values.redis.tls.caCertFile -}}
+- mountPath: /app/config/redis-tls
+  name: redis-tls-ca
+  readOnly: true
+{{- end -}}
+{{- end -}}
+
+{{/*
+Volume of that CA: the CA key of the Redis TLS Secret only, not the server key
+*/}}
+{{- define "argo-cd.redis.tlsCaVolume" -}}
+{{- if and (include "argo-cd.redis.tlsEnabled" .) .Values.redis.tls.caCertFile -}}
+- name: redis-tls-ca
+  secret:
+    secretName: {{ .Values.redis.tls.secretName }}
+    items:
+    - key: {{ .Values.redis.tls.caCertFile }}
+      path: ca.crt
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return Redis server endpoint
+*/}}
+{{- define "argo-cd.redis.server" -}}
+{{- $redisHa := (index .Values "redis-ha") -}}
+{{- if or (and .Values.redis.enabled (not $redisHa.enabled)) (and $redisHa.enabled $redisHa.haproxy.enabled) }}
+    {{- printf "%s:%s" (include "argo-cd.redis.fullname" .)  (toString .Values.redis.servicePort) }}
+{{- else if and .Values.externalRedis.host .Values.externalRedis.port }}
+    {{- printf "%s:%s" .Values.externalRedis.host (toString .Values.externalRedis.port) }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Create the name of the redis service account to use
+*/}}
+{{- define "argo-cd.redis.serviceAccountName" -}}
+{{- if .Values.redis.serviceAccount.create -}}
+    {{ default (include "argo-cd.redis.fullname" .) .Values.redis.serviceAccount.name }}
+{{- else -}}
+    {{ default "default" .Values.redis.serviceAccount.name }}
+{{- end -}}
+{{- end -}}
+
+
+{{/*
+Create Redis secret-init name
+*/}}
+{{- define "argo-cd.redisSecretInit.fullname" -}}
+{{- printf "%s-%s" (include "argo-cd.fullname" .) .Values.redisSecretInit.name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{/*
+Create the name of the Redis secret-init service account to use
+*/}}
+{{- define "argo-cd.redisSecretInit.serviceAccountName" -}}
+{{- if .Values.redisSecretInit.serviceAccount.create -}}
+    {{ default (include "argo-cd.redisSecretInit.fullname" .) .Values.redisSecretInit.serviceAccount.name }}
+{{- else -}}
+    {{ default "default" .Values.redisSecretInit.serviceAccount.name }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return "true" when the Argo CD server is enabled.
+A missing value (for example after `helm upgrade --reuse-values` from a chart
+version without `server.enabled`) is treated as enabled.
+*/}}
+{{- define "argo-cd.server.enabled" -}}
+{{- if ne (toString .Values.server.enabled) "false" -}}
+true
+{{- end -}}
+{{- end -}}
+
+{{/*
+Create argocd server name and version as used by the chart label.
+*/}}
+{{- define "argo-cd.server.fullname" -}}
+{{- printf "%s-%s" (include "argo-cd.fullname" .) .Values.server.name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{/*
+Create the name of the Argo CD server service account to use
+*/}}
+{{- define "argo-cd.server.serviceAccountName" -}}
+{{- if .Values.server.serviceAccount.create -}}
+    {{ default (include "argo-cd.server.fullname" .) .Values.server.serviceAccount.name }}
+{{- else -}}
+    {{ default "default" .Values.server.serviceAccount.name }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Create argocd repo-server name and version as used by the chart label.
+*/}}
+{{- define "argo-cd.repoServer.fullname" -}}
+{{- printf "%s-%s" (include "argo-cd.fullname" .) .Values.repoServer.name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{/*
+Create the name of the repo-server service account to use
+*/}}
+{{- define "argo-cd.repoServer.serviceAccountName" -}}
+{{- if .Values.repoServer.serviceAccount.create -}}
+    {{ default (include "argo-cd.repoServer.fullname" .) .Values.repoServer.serviceAccount.name }}
+{{- else -}}
+    {{ default "default" .Values.repoServer.serviceAccount.name }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Create argocd application set name and version as used by the chart label.
+*/}}
+{{- define "argo-cd.applicationSet.fullname" -}}
+{{- printf "%s-%s" (include "argo-cd.fullname" .) .Values.applicationSet.name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{/*
+Create the name of the application set service account to use
+*/}}
+{{- define "argo-cd.applicationSet.serviceAccountName" -}}
+{{- if .Values.applicationSet.serviceAccount.create -}}
+    {{ default (include "argo-cd.applicationSet.fullname" .) .Values.applicationSet.serviceAccount.name }}
+{{- else -}}
+    {{ default "default" .Values.applicationSet.serviceAccount.name }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Create argocd notifications name and version as used by the chart label.
+*/}}
+{{- define "argo-cd.notifications.fullname" -}}
+{{- printf "%s-%s" (include "argo-cd.fullname" .) .Values.notifications.name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{/*
+Create the name of the notifications service account to use
+*/}}
+{{- define "argo-cd.notifications.serviceAccountName" -}}
+{{- if .Values.notifications.serviceAccount.create -}}
+    {{ default (include "argo-cd.notifications.fullname" .) .Values.notifications.serviceAccount.name }}
+{{- else -}}
+    {{ default "default" .Values.notifications.serviceAccount.name }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Create argocd commit-server name and version as used by the chart label.
+*/}}
+{{- define "argo-cd.commitServer.fullname" -}}
+{{- printf "%s-%s" (include "argo-cd.fullname" .) .Values.commitServer.name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{/*
+Create the name of the commit-server service account to use
+*/}}
+{{- define "argo-cd.commitServer.serviceAccountName" -}}
+{{- if .Values.commitServer.serviceAccount.create -}}
+    {{ default (include "argo-cd.commitServer.fullname" .) .Values.commitServer.serviceAccount.name }}
+{{- else -}}
+    {{ default "default" .Values.commitServer.serviceAccount.name }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Argo Configuration Preset Values (Influenced by Values configuration)
+*/}}
+{{- define "argo-cd.config.cm.presets" -}}
+{{- $presets := dict -}}
+{{- $_ := set $presets "url" (printf "https://%s" .Values.global.domain) -}}
+{{- if eq (toString (index .Values.configs.cm "statusbadge.enabled")) "true" -}}
+{{- $_ := set $presets "statusbadge.url" (printf "https://%s/" .Values.global.domain) -}}
+{{- end -}}
+{{- if .Values.configs.styles -}}
+{{- $_ := set $presets "ui.cssurl" "./custom/custom.styles.css" -}}
+{{- end -}}
+{{- toYaml $presets }}
+{{- end -}}
+
+{{/*
+Merge Argo Configuration with Preset Configuration
+*/}}
+{{- define "argo-cd.config.cm" -}}
+{{- $config := omit .Values.configs.cm "create" "annotations" "resourceExclusionsAdditional" -}}
+{{- $preset := include "argo-cd.config.cm.presets" . | fromYaml | default dict -}}
+{{- $merged := mergeOverwrite $preset $config -}}
+{{- if .Values.configs.cm.resourceExclusionsAdditional }}
+{{- $existing := get $merged "resource.exclusions" | default "" | trimSuffix "\n" }}
+{{- $additional := .Values.configs.cm.resourceExclusionsAdditional | toYaml }}
+{{- $_ := set $merged "resource.exclusions" (list $existing $additional | compact | join "\n") -}}
+{{- end }}
+{{- range $key, $value := $merged }}
+{{- $fmted := $value | toString }}
+{{- if or (eq $key "url") (eq $key "statusbadge.url") }}
+{{- $fmted = tpl $fmted $ }}
+{{- end }}
+{{- if not (eq $fmted "") }}
+{{ $key }}: {{ $fmted | toYaml }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Argo Params Default Configuration Presets
+NOTE: Configuration keys must be stored as dict because YAML treats dot as separator
+*/}}
+{{- define "argo-cd.config.params.presets" -}}
+{{- $presets := dict -}}
+{{- $_ := set $presets "repo.server" (printf "%s:%s" (include "argo-cd.repoServer.fullname" .) (.Values.repoServer.service.port | toString)) -}}
+{{- $_ := set $presets "server.repo.server.strict.tls" (.Values.repoServer.certificateSecret.enabled | toString ) -}}
+{{- $_ := set $presets "redis.server" (include "argo-cd.redis.server" .) -}}
+{{- $_ := set $presets "applicationsetcontroller.enable.leader.election" (gt ((.Values.applicationSet.replicas | default .Values.applicationSet.replicaCount) | int64) 1) -}}
+{{- if .Values.dex.enabled -}}
+{{- $_ := set $presets "server.dex.server" (include "argo-cd.dex.server" .) -}}
+{{- $_ := set $presets "server.dex.server.strict.tls" .Values.dex.certificateSecret.enabled -}}
+{{- end -}}
+{{- if .Values.commitServer.enabled -}}
+{{- $_ := set $presets "commit.server" (printf "%s:%s" (include "argo-cd.commitServer.fullname" .) (.Values.commitServer.service.port | toString)) -}}
+{{- end -}}
+{{- range $component := tuple "applicationsetcontroller" "controller" "server" "reposerver" "notificationscontroller" "dexserver" "commitserver" -}}
+{{- $_ := set $presets (printf "%s.log.format" $component) $.Values.global.logging.format -}}
+{{- $_ := set $presets (printf "%s.log.level" $component) $.Values.global.logging.level -}}
+{{- end -}}
+{{- toYaml $presets }}
+{{- end -}}
+
+{{/*
+Merge Argo Params Configuration with Preset Configuration
+*/}}
+{{- define "argo-cd.config.params" -}}
+{{- $config := omit .Values.configs.params "create" "annotations" }}
+{{- $preset := include "argo-cd.config.params.presets" . | fromYaml | default dict -}}
+{{- range $key, $value := mergeOverwrite $preset $config }}
+{{ $key }}: {{ toString $value | toYaml }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Return a sha256sum of only the `data` and `stringData` sections of a rendered
+ConfigMap/Secret template, for use in `checksum/*` pod annotations.
+
+Only the config payload is hashed - not the full manifest. The manifest's
+`metadata.labels` includes `helm.sh/chart`, which changes on every chart
+version bump, so hashing the whole manifest would roll all pods on every
+release even when the configuration is unchanged. Hashing only the data keeps
+a pure version bump a no-op for the pods, while any real config change still
+rolls them. Ref: https://github.com/argoproj/argo-helm/issues/3958
+
+Usage:
+  checksum/cm: {{ include "argo-cd.config.checksum" (dict "context" $ "path" "/argocd-configs/argocd-cm.yaml") }}
+*/}}
+{{- define "argo-cd.config.checksum" -}}
+{{- $rendered := include (print .context.Template.BasePath .path) .context | fromYaml -}}
+{{- $data := merge (dict) (dig "data" dict $rendered) (dig "stringData" dict $rendered) -}}
+{{- $data | toYaml | sha256sum -}}
+{{- end -}}
+
+{{/*
+Expand the namespace of the release.
+Allows overriding it for multi-namespace deployments in combined charts.
+*/}}
+{{- define "argo-cd.namespace" -}}
+{{- default .Release.Namespace .Values.namespaceOverride | trunc 63 | trimSuffix "-" -}}
+{{- end }}
+
+{{/*
+Dual stack definition
+*/}}
+{{- define "argo-cd.dualStack" -}}
+{{- with .Values.global.dualStack.ipFamilyPolicy }}
+ipFamilyPolicy: {{ . }}
+{{- end }}
+{{- with .Values.global.dualStack.ipFamilies }}
+ipFamilies: {{ toYaml . | nindent 4 }}
+{{- end }}
+{{- end }}
+
+{{/*
+secretKeyRef of env variable REDIS_USERNAME
+*/}}
+{{- define "argo-cd.redisUsernameSecretRef" -}}
+    {{- if .Values.externalRedis.host -}}
+name: {{ default "argocd-redis" .Values.externalRedis.existingSecret }}
+key: redis-username
+optional: {{ if .Values.externalRedis.username }}false{{ else }}true{{ end }}
+
+    {{- else -}}
+name: "argocd-redis"
+key: redis-username
+optional: true
+    {{- end -}}
+{{- end -}}
+
+{{/*
+secretKeyRef of env variable REDIS_PASSWORD
+*/}}
+{{- define "argo-cd.redisPasswordSecretRef" -}}
+    {{- if .Values.externalRedis.host -}}
+    {{- /* External Redis use case */ -}}
+    {{- /* Secret is required when specifying existingSecret or a password, otherwise it is optional */ -}}
+name: {{ default "argocd-redis" .Values.externalRedis.existingSecret }}
+key: redis-password
+optional: {{ if or .Values.externalRedis.existingSecret .Values.externalRedis.password }}false{{ else }}true{{ end }}
+
+    {{- else if and .Values.redisSecretInit.enabled -}}
+    {{- /* Default case where Secret is generated by the Job with Helm pre-install hooks */ -}}
+name: "argocd-redis" # hard-coded in Job command and embedded Redis deployments (standalone and redis-ha)
+key: auth
+optional: false # Secret is not optional in this case !
+
+    {{- else if (index .Values "redis-ha").enabled -}}
+    {{- /* Embedded redis-ha with disabled pre-install Job: resolve the Secret name and key the same way the redis-ha subchart does */ -}}
+    {{- $redisHa := (index .Values "redis-ha") -}}
+    {{- $redisHaContext := dict "Chart" (dict "Name" "redis-ha") "Release" .Release "Template" .Template "Values" $redisHa -}}
+name: {{ default (include "redis-ha.fullname" $redisHaContext) (tpl ($redisHa.existingSecret | default "") $redisHaContext) }}
+key: {{ $redisHa.authKey }}
+optional: true
+
+    {{- else -}}
+    {{- /* All other use cases (e.g. disabled pre-install Job) */ -}}
+    {{- /* Secret is required when specifying redis.existingSecret, otherwise it is optional */ -}}
+name: {{ default "argocd-redis" .Values.redis.existingSecret }}
+key: auth
+optional: {{ if .Values.redis.existingSecret }}false{{ else }}true{{ end }}
+    {{- end -}}
+{{- end -}}
+
+{{/*
+Return the target Kubernetes version
+*/}}
+{{- define "argo-cd.kubeVersion" -}}
+  {{- default .Capabilities.KubeVersion.Version .Values.kubeVersionOverride }}
+{{- end -}}
+
+{{/*
+Return the appropriate apiVersion for monitoring CRDs
+*/}}
+{{- define "argo-cd.apiVersions.monitoring" -}}
+{{- if .Values.apiVersionOverrides.monitoring -}}
+{{- print .Values.apiVersionOverrides.monitoring -}}
+{{- else -}}
+{{- print "monitoring.coreos.com/v1" -}}
+{{- end -}}
+{{- end -}}

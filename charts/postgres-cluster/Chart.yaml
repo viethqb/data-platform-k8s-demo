@@ -1,0 +1,5 @@
+apiVersion: v2
+name: postgres-cluster
+description: Shared PostgreSQL cluster (CloudNativePG) with one database + role per app
+type: application
+version: 0.1.0

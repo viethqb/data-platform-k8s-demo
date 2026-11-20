@@ -1,0 +1,75 @@
+{{- $sel := dict "app.kubernetes.io/name" "polaris-console" "app.kubernetes.io/instance" .Release.Name }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}
+  labels: {{- toYaml $sel | nindent 4 }}
+spec:
+  selector: {{- toYaml $sel | nindent 4 }}
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels: {{- toYaml $sel | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {{- toYaml $sel | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- toYaml $sel | nindent 8 }}
+    spec:
+      containers:
+        - name: console
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: VITE_POLARIS_API_URL
+              value: {{ required "apiUrl is required" .Values.apiUrl | quote }}
+            - name: VITE_OAUTH_TOKEN_URL
+              value: "{{ .Values.apiUrl }}/api/catalog/v1/oauth/tokens"
+            - name: VITE_POLARIS_REALM
+              value: {{ .Values.realm | quote }}
+            - name: VITE_POLARIS_PRINCIPAL_SCOPE
+              value: {{ .Values.principalScope | quote }}
+            - name: VITE_POLARIS_REALM_HEADER_NAME
+              value: Polaris-Realm
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+{{- if .Values.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}
+  labels: {{- toYaml $sel | nindent 4 }}
+  annotations:
+    # The console's nginx serves "/"; strip the prefix. /polaris/api/* is a
+    # longer path and goes to the Polaris server Ingress instead.
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: {{ required "ingress.host is required" .Values.ingress.host }}
+      http:
+        paths:
+          - path: {{ .Values.ingress.path }}(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: {{ .Release.Name }}
+                port:
+                  name: http
+{{- end }}

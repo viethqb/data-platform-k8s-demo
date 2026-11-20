@@ -1,0 +1,34 @@
+# ingress-nginx on kind: run on the node labelled ingress-ready and bind
+# hostPorts. Listen ports are environment-specific (see environments/<env>).
+controller:
+  # Reference images by tag only, so images preloaded with `kind load`
+  # (scripts/preload-images.sh) are used instead of re-pulling by digest.
+  image:
+    digest: ""
+    digestChroot: ""
+  admissionWebhooks:
+    patch:
+      image:
+        digest: ""
+  hostPort:
+    enabled: true
+  nodeSelector:
+    ingress-ready: "true"
+    kubernetes.io/os: linux
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Equal
+      effect: NoSchedule
+  service:
+    type: NodePort
+  publishService:
+    enabled: false
+  extraArgs:
+    publish-status-address: localhost
+  ingressClassResource:
+    name: nginx
+    default: true
+  watchIngressWithoutClass: true
+  config:
+    # Large uploads (Silo console, Metabase CSV upload).
+    proxy-body-size: "0"

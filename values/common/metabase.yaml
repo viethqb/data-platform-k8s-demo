@@ -1,0 +1,5 @@
+database:
+  host: pg-rw.postgres.svc.cluster.local
+  name: metabase
+  user: metabase
+  passwordSecret: metabase-db

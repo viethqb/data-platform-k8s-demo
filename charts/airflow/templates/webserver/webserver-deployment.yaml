@@ -20,15 +20,15 @@
 ################################
 ## Airflow Webserver Deployment
 #################################
-{{- if .Values.webserver.enabled }}
+{{- if and .Values.webserver.enabled (semverCompare "<3.0.0" .Values.airflowVersion) }}
 {{- $nodeSelector := or .Values.webserver.nodeSelector .Values.nodeSelector }}
 {{- $affinity := or .Values.webserver.affinity .Values.affinity }}
 {{- $tolerations := or .Values.webserver.tolerations .Values.tolerations }}
 {{- $topologySpreadConstraints := or .Values.webserver.topologySpreadConstraints .Values.topologySpreadConstraints }}
-{{- $revisionHistoryLimit := or .Values.webserver.revisionHistoryLimit .Values.revisionHistoryLimit }}
-{{- $securityContext := include "airflowPodSecurityContext" (list . .Values.webserver) }}
-{{- $containerSecurityContext := include "containerSecurityContext" (list . .Values.webserver) }}
-{{- $containerSecurityContextWaitForMigrations := include "containerSecurityContext" (list . .Values.webserver.waitForMigrations) }}
+{{- $revisionHistoryLimit := include "airflow.revisionHistoryLimit" (list .Values.webserver.revisionHistoryLimit .Values.revisionHistoryLimit) }}
+{{- $securityContext := include "airflowPodSecurityContext" (list .Values.webserver .Values) }}
+{{- $containerSecurityContext := include "containerSecurityContext" (list .Values.webserver .Values) }}
+{{- $containerSecurityContextWaitForMigrations := include "containerSecurityContext" (list .Values.webserver.waitForMigrations .Values) }}
 {{- $containerLifecycleHooks := or .Values.webserver.containerLifecycleHooks .Values.containerLifecycleHooks }}
 apiVersion: apps/v1
 kind: Deployment
@@ -47,15 +47,16 @@ metadata:
   annotations: {{- toYaml .Values.webserver.annotations | nindent 4 }}
   {{- end }}
 spec:
+  {{- if not .Values.webserver.hpa.enabled }}
   replicas: {{ .Values.webserver.replicas }}
-  {{- if $revisionHistoryLimit }}
+  {{- end}}
+  {{- if ne $revisionHistoryLimit "" }}
   revisionHistoryLimit: {{ $revisionHistoryLimit }}
   {{- end }}
   strategy:
     {{- if .Values.webserver.strategy }}
     {{- toYaml .Values.webserver.strategy | nindent 4 }}
     {{- else }}
-    {{- if semverCompare ">=2.0.0" .Values.airflowVersion }}
     # Here we define the rolling update strategy
     # - maxSurge define how many pod we can add at a time
     # - maxUnavailable define how many pod can be unavailable
@@ -67,9 +68,6 @@ spec:
     rollingUpdate:
       maxSurge: 1
       maxUnavailable: 0
-    {{- else }}
-    type: Recreate
-    {{- end }}
     {{- end }}
   selector:
     matchLabels:
@@ -82,7 +80,7 @@ spec:
         tier: airflow
         component: webserver
         release: {{ .Release.Name }}
-        {{- if or (.Values.labels) (.Values.webserver.labels) }}
+        {{- if or .Values.labels .Values.webserver.labels }}
           {{- mustMerge .Values.webserver.labels .Values.labels | toYaml | nindent 8 }}
         {{- end }}
       annotations:
@@ -94,16 +92,17 @@ spec:
         checksum/extra-configmaps: {{ include (print $.Template.BasePath "/configmaps/extra-configmaps.yaml") . | sha256sum }}
         checksum/extra-secrets: {{ include (print $.Template.BasePath "/secrets/extra-secrets.yaml") . | sha256sum }}
         {{- if .Values.airflowPodAnnotations }}
-          {{- toYaml .Values.airflowPodAnnotations | nindent 8 }}
+          {{- tpl (toYaml .Values.airflowPodAnnotations) . | nindent 8 }}
         {{- end }}
         {{- if .Values.webserver.podAnnotations }}
-          {{- toYaml .Values.webserver.podAnnotations | nindent 8 }}
+          {{- tpl (toYaml .Values.webserver.podAnnotations) . | nindent 8 }}
         {{- end }}
     spec:
       {{- if .Values.webserver.hostAliases }}
       hostAliases: {{- toYaml .Values.webserver.hostAliases | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "webserver.serviceAccountName" . }}
+      {{- include "serviceLinks" . | nindent 6 }}
       {{- if .Values.webserver.priorityClassName }}
       priorityClassName: {{ .Values.webserver.priorityClassName }}
       {{- end }}
@@ -127,11 +126,9 @@ spec:
       tolerations: {{- toYaml $tolerations | nindent 8 }}
       topologySpreadConstraints: {{- toYaml $topologySpreadConstraints | nindent 8 }}
       restartPolicy: Always
+      terminationGracePeriodSeconds: {{ .Values.webserver.terminationGracePeriodSeconds }}
       securityContext: {{ $securityContext | nindent 8 }}
-      {{- if or .Values.registry.secretName .Values.registry.connection }}
-      imagePullSecrets:
-        - name: {{ template "registry_secret" . }}
-      {{- end }}
+      imagePullSecrets: {{- include "image_pull_secrets" . | nindent 8 }}
       initContainers:
         {{- if .Values.webserver.waitForMigrations.enabled }}
         - name: wait-for-airflow-migrations
@@ -159,11 +156,8 @@ spec:
               {{- tpl (toYaml .Values.webserver.waitForMigrations.env) $ | nindent 12 }}
             {{- end }}
         {{- end }}
-        {{- if and (.Values.dags.gitSync.enabled) (not .Values.dags.persistence.enabled) (semverCompare "<2.0.0" .Values.airflowVersion) }}
-          {{- include "git_sync_container" (dict "Values" .Values "is_init" "true" "Template" .Template) | nindent 8 }}
-        {{- end }}
         {{- if .Values.webserver.extraInitContainers }}
-          {{- toYaml .Values.webserver.extraInitContainers | nindent 8 }}
+          {{- tpl (toYaml .Values.webserver.extraInitContainers) . | nindent 8 }}
         {{- end }}
       containers:
         - name: webserver
@@ -181,22 +175,20 @@ spec:
           {{- end }}
           resources: {{- toYaml .Values.webserver.resources | nindent 12 }}
           volumeMounts:
-            {{- if semverCompare ">=1.10.12" .Values.airflowVersion }}
             - name: config
               mountPath: {{ include "airflow_pod_template_file" . }}/pod_template_file.yaml
               subPath: pod_template_file.yaml
               readOnly: true
-            {{- end }}
             {{- include "airflow_config_mount" . | nindent 12 }}
             {{- if or .Values.webserver.webserverConfig .Values.webserver.webserverConfigConfigMapName }}
               {{- include "airflow_webserver_config_mount" . | nindent 12 }}
             {{- end }}
-            {{- if and (semverCompare "<2.0.0" .Values.airflowVersion) (or .Values.dags.gitSync.enabled .Values.dags.persistence.enabled) }}
-              {{- include "airflow_dags_mount" . | nindent 12 }}
-            {{- end }}
             {{- if .Values.logs.persistence.enabled }}
             - name: logs
               mountPath: {{ template "airflow_logs" . }}
+              {{- if .Values.logs.persistence.subPath }}
+              subPath: {{ .Values.logs.persistence.subPath }}
+              {{- end }}
             {{- end }}
             {{- if .Values.volumeMounts }}
               {{- toYaml .Values.volumeMounts | nindent 12 }}
@@ -245,6 +237,7 @@ spec:
                   value: {{ regexReplaceAll ":\\d+$" (urlParse (tpl .Values.config.webserver.base_url .)).host  "" }}
               {{- end }}
               scheme: {{ .Values.webserver.startupProbe.scheme | default "http" }}
+            initialDelaySeconds: {{ .Values.webserver.startupProbe.initialDelaySeconds }}
             timeoutSeconds: {{ .Values.webserver.startupProbe.timeoutSeconds }}
             failureThreshold: {{ .Values.webserver.startupProbe.failureThreshold }}
             periodSeconds: {{ .Values.webserver.startupProbe.periodSeconds }}
@@ -253,11 +246,8 @@ spec:
             {{- include "custom_airflow_environment" . | indent 10 }}
             {{- include "standard_airflow_environment" . | indent 10 }}
             {{- include "container_extra_envs" (list . .Values.webserver.env) | indent 10 }}
-        {{- if and (.Values.dags.gitSync.enabled) (not .Values.dags.persistence.enabled) (semverCompare "<2.0.0" .Values.airflowVersion) }}
-          {{- include "git_sync_container" . | nindent 8 }}
-        {{- end }}
         {{- if .Values.webserver.extraContainers }}
-          {{- toYaml .Values.webserver.extraContainers | nindent 8 }}
+          {{- tpl (toYaml .Values.webserver.extraContainers) . | nindent 8 }}
         {{- end }}
       volumes:
         - name: config
@@ -267,19 +257,6 @@ spec:
         - name: webserver-config
           configMap:
             name: {{ template "airflow_webserver_config_configmap_name" . }}
-        {{- end }}
-        {{- if (semverCompare "<2.0.0" .Values.airflowVersion) }}
-        {{- if .Values.dags.persistence.enabled }}
-        - name: dags
-          persistentVolumeClaim:
-            claimName: {{ template "airflow_dags_volume_claim" . }}
-        {{- else if .Values.dags.gitSync.enabled }}
-        - name: dags
-          emptyDir: {{- toYaml (default (dict) .Values.dags.gitSync.emptyDirConfig) | nindent 12 }}
-        {{- if  .Values.dags.gitSync.sshKeySecret }}
-          {{- include "git_sync_ssh_key_volume" . | indent 8 }}
-        {{- end }}
-        {{- end }}
         {{- end }}
         {{- if .Values.logs.persistence.enabled }}
         - name: logs

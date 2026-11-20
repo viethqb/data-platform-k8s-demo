@@ -1,0 +1,62 @@
+# Apache Polaris (Iceberg REST catalog) with built-in authentication:
+# principals authenticate with client_id/client_secret (OAuth2 client
+# credentials), authorisation is Polaris RBAC. No external IdP needed.
+realmContext:
+  realms:
+    - POLARIS
+
+persistence:
+  type: relational-jdbc
+  relationalJdbc:
+    secret:
+      name: polaris-persistence        # username / password / jdbcUrl (External Secrets)
+
+authentication:
+  tokenBroker:
+    # Shared signing key from Vault, so tokens survive pod restarts.
+    type: symmetric-key
+    secret:
+      name: polaris-token-broker
+      symmetricKey:
+        secretKey: symmetric.key
+
+# Server-side S3 credentials (Silo). Used to read/write table metadata.
+storage:
+  secret:
+    name: polaris-storage
+    awsAccessKeyId: awsAccessKeyId
+    awsSecretAccessKey: awsSecretAccessKey
+
+# With stsUnavailable (no credential vending, see charts/polaris-setup) the
+# server's FileIO uses the AWS default credential chain, so the Silo keys must
+# also be plain AWS_* env vars.
+extraEnv:
+  - name: AWS_REGION
+    value: us-east-1
+  - name: AWS_ACCESS_KEY_ID
+    valueFrom:
+      secretKeyRef:
+        name: polaris-storage
+        key: awsAccessKeyId
+  - name: AWS_SECRET_ACCESS_KEY
+    valueFrom:
+      secretKeyRef:
+        name: polaris-storage
+        key: awsSecretAccessKey
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    # Polaris serves /api/...; the console and the API share /polaris on the
+    # platform host, so only /polaris/api/* goes to the server.
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /api/$2
+  tls: []
+
+# Quarkus/JVM start takes ~20s, longer while other apps start; the chart's
+# default liveness (5s delay, 3 x 10s) restarted the pod during start-up.
+livenessProbe:
+  initialDelaySeconds: 60
+readinessProbe:
+  initialDelaySeconds: 15

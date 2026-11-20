@@ -1,0 +1,44 @@
+image:
+  repository: docker.io/apache/ranger
+  tag: "2.9.0"
+  pullPolicy: IfNotPresent
+
+# -- Tomcat context path. The ingress forwards this prefix unchanged.
+contextPath: /ranger
+
+# -- External URL users reach Ranger at (policymgr_external_url).
+externalUrl: ""
+
+database:
+  # -- host:port of PostgreSQL
+  host: ""
+  name: ranger
+  user: ranger
+
+# -- Secret with keys db-password and admin-password (created outside Git).
+# admin-password must be >= 8 chars with letters and digits.
+secretName: ranger-secrets
+
+heapSize: 1g
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 1Gi
+  limits:
+    memory: 2Gi
+
+# -- setup.sh replays DB checks on every start and can take 10+ minutes.
+# Killing it midway leaves a stale password-update lock in the DB, so the
+# startup probe waits up to periodSeconds * failureThreshold.
+startupProbe:
+  periodSeconds: 10
+  failureThreshold: 180
+
+ingress:
+  enabled: false
+  className: nginx
+  host: ""
+  # -- The React UI requests icons from /images/<hash>.(svg|png), outside the
+  # context path. Route exactly those files back under the context path.
+  rewriteRootImages: true

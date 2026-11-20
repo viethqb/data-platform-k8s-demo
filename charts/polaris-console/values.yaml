@@ -1,0 +1,26 @@
+# Built by scripts/build-images.sh from images/polaris-console and pushed to
+# the local registry (localhost:5001, see scripts/registry-cache.sh).
+image:
+  repository: localhost:5001/polaris-console
+  tag: 823dddd-polaris
+  pullPolicy: IfNotPresent
+
+# -- Public base URL of the Polaris API as seen by the browser
+# (the console appends /api/...). Same origin as the console => no CORS.
+apiUrl: ""
+realm: POLARIS
+principalScope: PRINCIPAL_ROLE:ALL
+
+resources:
+  requests:
+    cpu: 20m
+    memory: 32Mi
+  limits:
+    memory: 128Mi
+
+ingress:
+  enabled: false
+  className: nginx
+  host: ""
+  # -- Must match the base path the image was built with (images/polaris-console/image.env)
+  path: /polaris

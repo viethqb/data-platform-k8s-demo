@@ -1,0 +1,25 @@
+realm: POLARIS
+
+images:
+  mc: docker.io/pgsty/mc:RELEASE.2026-11-12T00-00-00Z
+  adminTool: docker.io/apache/polaris-admin-tool:1.9.0
+  curl: docker.io/curlimages/curl:8.17.0
+
+# Polaris server inside the cluster
+polarisUrl: http://polaris.polaris.svc:8181
+polarisHealthUrl: http://polaris-mgmt.polaris.svc:8182/q/health/ready
+
+# Secrets (External Secrets)
+persistenceSecret: polaris-persistence   # username / password / jdbcUrl
+storageSecret: polaris-storage           # awsAccessKeyId / awsSecretAccessKey
+rootSecret: polaris-root                 # client-id / client-secret / credential
+
+s3:
+  endpoint: http://silo.silo.svc:9000
+  region: us-east-1
+  bucket: warehouse
+
+# Default catalog created by the job (skipped if it already exists)
+catalog:
+  name: lakehouse
+  baseLocation: s3://warehouse/polaris/lakehouse
