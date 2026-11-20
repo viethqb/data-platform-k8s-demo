@@ -191,16 +191,27 @@ def resource_key(policy):
         (k, tuple(sorted(v.get("values", [])))) for k, v in policy.get("resources", {}).items()))
 
 
-def upsert_policy(policy):
-    """Create the policy, or update the one with the same name or the same resources.
+RANGER_DEFAULT_PREFIX = "all - "   # policies Ranger creates with a new service
 
-    Ranger refuses two policies of the same type on identical resources, and creating a
-    service adds default policies on "*" ("all - catalog", ...): those are taken over.
+
+def upsert_policy(policy):
+    """Create the policy, or update the one with the same name.
+
+    Ranger refuses two policies of the same type on identical resources. Creating a
+    service adds default policies on "*" ("all - catalog", ...): a policy on the same
+    resources takes such a default over. Any other policy on the same resources is an
+    error in the configuration (never overwritten).
     """
     policy = dict({"service": SERVICE, "isEnabled": True, "isAuditEnabled": False}, **policy)
     _, existing_all = call("GET", f"/service/public/v2/api/service/{SERVICE}/policy")
-    existing = next((p for p in existing_all or [] if p["name"] == policy["name"]), None) or \
-        next((p for p in existing_all or [] if resource_key(p) == resource_key(policy)), None)
+    existing_all = existing_all or []
+    existing = next((p for p in existing_all if p["name"] == policy["name"]), None)
+    if not existing:
+        clash = next((p for p in existing_all if resource_key(p) == resource_key(policy)), None)
+        if clash and not clash["name"].startswith(RANGER_DEFAULT_PREFIX):
+            raise SystemExit(f"policy {policy['name']}: same resources as existing policy "
+                             f"'{clash['name']}'; merge them (Ranger allows one policy per resource set)")
+        existing = clash
     if existing:
         policy["id"] = existing["id"]
         call("PUT", f"/service/public/v2/api/policy/{existing['id']}", policy)
@@ -211,14 +222,29 @@ def upsert_policy(policy):
         print(f"policy {policy['name']}: created")
 
 
+# Read-only items for the lookup user, added to the superuser policy of the same
+# hierarchy (Ranger allows one policy per resource set). StarRocks lists only
+# objects the user holds a privilege on; there is no metadata-only privilege.
+LOOKUP_ACCESSES = {
+    ("catalog",): ["usage"],
+    ("catalog", "database", "table", "column"): ["select"],
+}
+
+
 def superuser_policies(users):
     for path in hierarchies():
+        items = [item(users, accesses=accesses_for(path[-1]), delegateAdmin=True)]
+        lookup_accesses = LOOKUP_ACCESSES.get(tuple(path)) if LOOKUP.get("enabled") else None
+        if lookup_accesses:
+            items.append(item([LOOKUP["user"]], accesses=[{"type": a, "isAllowed": True} for a in lookup_accesses]))
         upsert_policy({
             "name": "superusers-" + "-".join(p.replace(" ", "_") for p in path),
-            "description": "Every privilege for the superusers (managed by starrocks-ranger)",
+            "description": "Every privilege for the superusers"
+                           + (", read-only for the Ranger lookup user" if lookup_accesses else "")
+                           + " (managed by starrocks-ranger)",
             "policyType": 0,
             "resources": {p: values("*") for p in path},
-            "policyItems": [item(users, accesses=accesses_for(path[-1]), delegateAdmin=True)],
+            "policyItems": items,
         })
 
 

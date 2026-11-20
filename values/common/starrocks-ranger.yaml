@@ -4,6 +4,10 @@ superUsers:
 
 # Resource lookup in the Ranger UI (autocomplete, Test Connection) through the
 # StarRocks plugin baked into images/ranger-admin.
+# The lookup user gets read-only items inside the superuser policies for
+# catalog=* (usage) and catalog/database/table/column=* (select): Ranger allows
+# one policy per resource set, and StarRocks only lists objects the user holds
+# a privilege on.
 lookup:
   enabled: true
   user: ranger_lookup
@@ -31,16 +35,3 @@ policies:
     users: [analyst]
     maskType: MASK_NULL
 
-  # Lookup user: list catalogs, databases, tables and columns for autocomplete.
-  # StarRocks lists only objects the user holds a privilege on, and no
-  # metadata-only privilege exists, so this is read access (no writes).
-  - name: ranger-lookup-catalogs
-    type: access
-    resources: { catalog: "*" }
-    users: [ranger_lookup]
-    accesses: [usage]
-  - name: ranger-lookup-read
-    type: access
-    resources: { catalog: "*", database: "*", table: "*", column: "*" }
-    users: [ranger_lookup]
-    accesses: [select]
