@@ -2,6 +2,10 @@ configs:
   params:
     # TLS terminates at (or is skipped by) ingress-nginx.
     server.insecure: true
+    # The repo vendors its charts (~6 MB); on a slow link `git fetch` took
+    # longer than the 60s default and manifest generation failed.
+    controller.repo.server.timeout.seconds: "300"
+    server.repo.server.timeout.seconds: "300"
   cm:
     # Track resources by annotation so charts that set their own
     # app.kubernetes.io/instance label don't confuse Argo CD.
@@ -34,3 +38,9 @@ notifications:
 redis:
   image:
     repository: docker.io/library/redis
+
+repoServer:
+  env:
+    # Timeout for git/helm commands run by the repo server (default 90s).
+    - name: ARGOCD_EXEC_TIMEOUT
+      value: 5m
