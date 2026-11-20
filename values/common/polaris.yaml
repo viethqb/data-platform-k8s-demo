@@ -27,9 +27,22 @@ storage:
     awsAccessKeyId: awsAccessKeyId
     awsSecretAccessKey: awsSecretAccessKey
 
+# With stsUnavailable (no credential vending, see charts/polaris-setup) the
+# server's FileIO uses the AWS default credential chain, so the Silo keys must
+# also be plain AWS_* env vars.
 extraEnv:
   - name: AWS_REGION
     value: us-east-1
+  - name: AWS_ACCESS_KEY_ID
+    valueFrom:
+      secretKeyRef:
+        name: polaris-storage
+        key: awsAccessKeyId
+  - name: AWS_SECRET_ACCESS_KEY
+    valueFrom:
+      secretKeyRef:
+        name: polaris-storage
+        key: awsSecretAccessKey
 
 ingress:
   enabled: true
