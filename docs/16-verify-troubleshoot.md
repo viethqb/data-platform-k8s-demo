@@ -18,7 +18,7 @@ kubectl -n argocd get applications
 
 Mọi dòng phải là `Synced  Healthy`: `airflow`, `argocd`, `cloudnative-pg`,
 `external-secrets`, `ingress-nginx`, `metabase`, `polaris`, `polaris-console`, `polaris-setup`,
-`platform-secrets`, `postgres`, `ranger`, `silo`, `starrocks`, `starrocks-operator`, `starrocks-setup`, `vault` (cộng `root` nếu có).
+`platform-secrets`, `postgres`, `ranger`, `silo`, `starrocks`, `starrocks-operator`, `starrocks-ranger`, `starrocks-setup`, `vault` (cộng `root` nếu có).
 
 ```bash
 kubectl get externalsecret -A          # tất cả SecretSynced / True
@@ -53,6 +53,7 @@ tra tab Network không có request 404 nào tới asset.
 | Airflow api-server CrashLoop | Startup probe quá ngắn | [12](12-airflow.md) |
 | Nhiều pod restart cùng lúc, `kube-scheduler` restart, probe `context deadline exceeded` | Node nghẽn CPU vì nhiều app khởi động cùng lúc | [6](06-argocd.md#wave-cài-lần-lượt-không-cài-dồn) |
 | Ranger restart liên tục | Lock đổi mật khẩu bị kẹt | [14](14-ranger.md) |
+| User StarRocks (trừ root) bị từ chối hết; log FE `Unauthenticated access not allowed` | Plugin không tải được policy từ Ranger | [15](15-starrocks.md#plugin-tải-policy-không-cần-kerberos) |
 
 Xem nhanh:
 

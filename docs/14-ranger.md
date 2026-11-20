@@ -37,6 +37,14 @@ Ranger dùng Tomcat nhúng với context path `ranger.contextName`, nên tự ph
 tuyệt đối `/images/<hash>.svg|png`, nên chart tạo thêm một Ingress chỉ bắt đúng
 các file này và rewrite về `/ranger/images/` (`ingress.rewriteRootImages: true`).
 
+## Plugin và cấu hình thêm cho `ranger-admin-site.xml`
+
+`values.siteProperties` của chart được entrypoint ghi vào `ranger-admin-site.xml`
+(cùng chỗ với `ranger.contextName`). UAT bật
+`ranger.admin.allow.unauthenticated.download.access` để plugin StarRocks tải
+policy mà không cần Kerberos; chi tiết ở
+[bước 15](15-starrocks.md#plugin-tải-policy-không-cần-kerberos).
+
 ## Lỗi đã gặp
 
 | Triệu chứng | Nguyên nhân | Cách xử lý |

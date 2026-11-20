@@ -18,8 +18,7 @@ ghi bảng Iceberg qua **Polaris** (catalog `lakehouse`), dữ liệu nằm trê
 | Operator | `starrocks/operator:v1.11.8` | |
 
 Danh sách bản vá có trong image FE: `/opt/starrocks/fe/EGRET-PATCHES.txt`.
-Các bản vá này chủ yếu có tác dụng khi bật `access_control = ranger` (mask,
-row filter). Lab này **chưa** nối StarRocks với Ranger.
+Các bản vá này có tác dụng khi bật `access_control = ranger` (mục 15.3).
 
 ## SQL không đi qua path
 
@@ -55,6 +54,7 @@ kubectl -n starrocks port-forward svc/starrocks-fe-service 8030:8030
 ```bash
 ENV=uat ./scripts/vault-setup.sh                        # seed secret/platform/starrocks
 ENV=uat ./scripts/apply-app.sh starrocks-operator --wait
+ENV=uat ./scripts/apply-app.sh starrocks-ranger --wait     # trước StarRocks: policy cho root phải có sẵn
 ENV=uat ./scripts/apply-app.sh starrocks --wait
 ENV=uat ./scripts/apply-app.sh starrocks-setup --wait
 ```
@@ -63,7 +63,8 @@ ENV=uat ./scripts/apply-app.sh starrocks-setup --wait
 |---|---|---|
 | `starrocks-operator` | `charts/starrocks-operator` (vendor `operator` 1.11.8) | Operator + CRD `StarRocksCluster` |
 | `starrocks` | `charts/starrocks` (vendor 1.11.8) | 1 FE + 1 BE, `default_replication_num = 1` |
-| `starrocks-setup` | `charts/starrocks-setup` | Job: đặt mật khẩu root → chờ BE sống → tạo (hoặc tạo lại) catalog `lakehouse` |
+| `starrocks-ranger` | `charts/starrocks-ranger` | Job đăng ký StarRocks trong Ranger (servicedef, service, user, policy) + ConfigMap cấu hình plugin cho FE |
+| `starrocks-setup` | `charts/starrocks-setup` | Job: đặt mật khẩu root → chờ BE sống → tạo (hoặc tạo lại) catalog `lakehouse` → tạo user → bảng demo |
 
 ### Mật khẩu root
 
@@ -109,6 +110,125 @@ Lab dùng principal `root` của Polaris và key root của Silo cho gọn. Môi
 thật nên tạo một principal Polaris riêng cho StarRocks (chỉ có quyền trên
 catalog cần dùng) và một user Silo riêng.
 
+## 15.3 Phân quyền bằng Apache Ranger
+
+FE chạy với `access_control = ranger`: **mọi** quyền (kể cả của `root`) do
+Ranger quyết định, không dùng `GRANT` của StarRocks.
+
+```mermaid
+flowchart LR
+  job["Job starrocks-ranger<br/>(Python, REST API)"] -->|servicedef, service,<br/>users, policies| ranger[(Ranger Admin)]
+  fe["StarRocks FE<br/>access_control = ranger"] -->|tải policy mỗi 10s<br/>/service/plugins/policies/download| ranger
+  user([analyst]) -->|SQL| fe
+```
+
+### Phía Ranger: `charts/starrocks-ranger`
+
+Ranger 2.9 **chưa có sẵn** service definition `starrocks`. Job
+`starrocks-ranger` dùng file `servicedef-starrocks.json` (lấy từ bộ test của
+[egret-starrocks](https://github.com/egret-data/egret-starrocks)) và làm, idempotent:
+
+1. Đăng ký service definition `starrocks` (resource `catalog` → `database` →
+   `table` → `column`, cùng `view`, `materialized_view`, `function`, `system`,
+   `user`...; có row filter và data mask).
+2. Tạo service `starrocks`, là tên mà plugin trong FE dùng.
+3. Tạo user trong Ranger (`root`, `analyst`).
+4. Với superuser (`root`): mỗi nhánh resource một policy, gồm mọi quyền hợp lệ
+   cho nhánh đó. Khi tạo service, Ranger tự sinh các policy mặc định trên `*`
+   (`all - catalog`, ...) và không cho tạo policy trùng resource, nên Job
+   **thay thế** các policy mặc định đó.
+5. Policy khai báo trong `values/common/starrocks-ranger.yaml`.
+
+Policy demo:
+
+```yaml
+policies:
+  - name: analyst-read-orders
+    type: access
+    resources: { catalog: lakehouse, database: sales, table: orders, column: "*" }
+    users: [analyst]
+    accesses: [select]
+  - name: analyst-orders-hanoi-only
+    type: rowFilter
+    resources: { catalog: lakehouse, database: sales, table: orders }
+    users: [analyst]
+    filter: "city = 'Hanoi'"
+  - name: analyst-mask-amount
+    type: mask
+    resources: { catalog: lakehouse, database: sales, table: orders, column: amount }
+    users: [analyst]
+    maskType: MASK_NULL
+```
+
+Thêm hoặc sửa policy: sửa file này rồi push. Job có tên theo checksum, nên sẽ
+chạy lại và cập nhật policy. Cũng có thể sửa trực tiếp trên Ranger UI
+(<https://data-uat.127.0.0.1.nip.io/ranger/> → service **starrocks**), nhưng
+khi Job chạy lại, các policy cùng tên sẽ bị ghi đè bằng giá trị trong Git.
+
+### Phía StarRocks
+
+```yaml
+# values/common/starrocks.yaml
+starrocksFESpec:
+  config: |
+    ...
+    access_control = ranger
+  configMaps:                           # từ charts/starrocks-ranger
+    - name: starrocks-ranger-plugin
+      mountPath: /opt/starrocks/fe/conf/ranger-starrocks-security.xml
+      subPath: ranger-starrocks-security.xml
+    - name: starrocks-ranger-plugin
+      mountPath: /opt/starrocks/fe/conf/ranger-starrocks-audit.xml
+      subPath: ranger-starrocks-audit.xml
+```
+
+`ranger-starrocks-security.xml` trỏ plugin vào
+`http://ranger-admin.ranger.svc:6080/ranger`, service `starrocks`, poll mỗi
+10 giây, cache policy trong `fe/meta/ranger-policycache`. Audit đang tắt (lab
+không có Solr/OpenSearch).
+
+User `analyst` được `starrocks-setup` tạo trong StarRocks, mật khẩu ở Vault
+`secret/platform/starrocks` → `analyst-password`. Quyền của nó chỉ đến từ Ranger.
+
+### Plugin tải policy không cần Kerberos
+
+Lab không có Kerberos, nên plugin gọi endpoint download không xác thực. Ranger
+mặc định từ chối (`Unauthenticated access not allowed`), và khi đó FE **không có
+policy nào**: mọi user trừ `root` bị từ chối hết. UAT bật cờ chỉ dành cho các
+endpoint download:
+
+```yaml
+# values/common/ranger.yaml
+siteProperties:
+  ranger.admin.allow.unauthenticated.download.access: "true"
+```
+
+Phải dùng đúng cờ `...download.access`. Cờ rộng hơn
+`ranger.admin.allow.unauthenticated.access` **không** có tác dụng ở đây, vì
+`ranger-admin-default-site.xml` đặt riêng cờ download là `false`. Môi trường
+thật nên dùng Kerberos cho plugin.
+
+### Kết quả
+
+```text
+root    → SELECT * FROM lakehouse.sales.orders
+| 1 | Hanoi  | 120.5 |
+| 2 | Saigon |    99 |
+| 3 | Danang | 45.25 |
+| 4 | Hanoi  |    30 |
+
+analyst → cùng câu lệnh (row filter city = 'Hanoi', amount MASK_NULL)
+| 1 | Hanoi | NULL |
+| 4 | Hanoi | NULL |
+
+analyst → SELECT COUNT(*) FROM lakehouse.sales.orders$files
+ERROR 5210: metadata table orders$files is not available because a row access
+or column masking policy applies to table orders for this user     ← bản vá egret 0001
+
+analyst → CREATE TABLE lakehouse.sales.hack (id BIGINT)
+ERROR 5204: Access denied; you need ... CREATE TABLE ... on DATABASE sales
+```
+
 ## Checkpoint
 
 ```bash
@@ -138,6 +258,13 @@ SELECT snapshot_id, operation FROM lakehouse.sales.orders$snapshots;
 
 Sau đó vào Polaris Console → **Catalogs → lakehouse → sales** sẽ thấy bảng
 `orders`; file dữ liệu nằm trong bucket `warehouse` của Silo.
+
+Kiểm tra phân quyền (`analyst` chỉ thấy dòng Hanoi, `amount` là NULL):
+
+```bash
+APW=$(kubectl -n starrocks get secret starrocks-setup -o jsonpath='{.data.analyst-password}' | base64 -d)
+mysql -h 127.0.0.1 -P 19030 -u analyst -p"$APW" -e 'SELECT * FROM lakehouse.sales.orders'
+```
 
 Kiểm tra FE đúng là image đã vá:
 

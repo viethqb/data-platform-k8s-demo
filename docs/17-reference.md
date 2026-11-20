@@ -9,7 +9,7 @@ charts/
   postgres-cluster/ silo/ metabase/ ranger-admin/        chart local
   polaris-setup/ polaris-console/                        chart local (Polaris)
   starrocks-operator/ starrocks/                         chart upstream (StarRocks)
-  starrocks-setup/                                       chart local (StarRocks)
+  starrocks-setup/ starrocks-ranger/                     chart local (StarRocks, StarRocks trong Ranger)
   platform-secrets/                                      ClusterSecretStore + ExternalSecret
   platform-apps/                                         app-of-apps cho một môi trường
 values/common/<app>.yaml                                 values dùng chung mọi môi trường

@@ -80,8 +80,9 @@ Khi bật tất cả bằng root app, `wave` quyết định thứ tự:
 | 2 | polaris-setup, polaris-console, metabase |
 | 3 | airflow |
 | 4 | ranger |
-| 5 | starrocks |
-| 6 | starrocks-setup |
+| 5 | starrocks-ranger |
+| 6 | starrocks |
+| 7 | starrocks-setup |
 
 Mặc định Argo CD **không** đợi Application con Healthy mới sang wave sau, vì
 nó không đánh giá health của kiểu `Application`. Khi image có sẵn trong cache, mọi app

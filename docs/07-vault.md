@@ -72,7 +72,7 @@ secret/platform/airflow              fernet-key, api-secret-key, jwt-secret, adm
 secret/platform/ranger               admin-password
 secret/platform/silo                 root-user, root-password
 secret/platform/polaris              root-client-secret, token-key
-secret/platform/starrocks            root-password
+secret/platform/starrocks            root-password, analyst-password
 ```
 
 > **Chỉ dành cho lab**: unseal key và root token được lưu vào Secret

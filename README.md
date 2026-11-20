@@ -54,7 +54,7 @@ flowchart LR
 | `/metabase/` | Metabase 0.63 | `charts/metabase` (local) | `MB_SITE_URL`, ingress strip prefix |
 | `/polaris/` | Apache Polaris 1.9 (Iceberg REST, đăng nhập + RBAC có sẵn) | `charts/polaris`, `charts/polaris-console` (local) | API `/polaris/api` và console `/polaris/`, ingress strip prefix; console build kèm patch base path |
 | `/silo/` | Silo console | `charts/silo` (local) | `MINIO_BROWSER_REDIRECT_URL`, ingress strip prefix |
-| `127.0.0.1:19030` (TCP) | StarRocks 4.1.7, FE vá bảo mật [egret-starrocks](https://github.com/egret-data/egret-starrocks) | `charts/starrocks` + operator | Giao thức MySQL không route theo path: đi qua ingress-nginx `tcp-services` |
+| `127.0.0.1:19030` (TCP) | StarRocks 4.1.7, FE vá bảo mật [egret-starrocks](https://github.com/egret-data/egret-starrocks) | `charts/starrocks` + operator | Giao thức MySQL không route theo path: đi qua ingress-nginx `tcp-services`. Phân quyền bằng Ranger (row filter, mask) |
 | `/ranger/` | Ranger Admin 2.9 | `charts/ranger-admin` (local) | Tomcat `ranger.contextName` |
 
 ## Bắt đầu
