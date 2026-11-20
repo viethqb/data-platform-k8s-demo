@@ -15,6 +15,7 @@ Vault, Argo CD quản lý mọi thứ từ Git.
 | `https://data-uat.127.0.0.1.nip.io/polaris/` | Apache Polaris (Iceberg REST catalog, có đăng nhập + RBAC) |
 | `https://data-uat.127.0.0.1.nip.io/silo/` | Silo console (object storage, fork của MinIO) |
 | `https://data-uat.127.0.0.1.nip.io/ranger/` | Apache Ranger Admin |
+| `mysql -h 127.0.0.1 -P 9030` | StarRocks (SQL qua TCP, đọc/ghi Iceberg trên Polaris) |
 
 ## Thứ tự cài và vì sao
 
@@ -38,6 +39,7 @@ flowchart TB
   I --> L["12. Airflow"]
   I --> M["13. Metabase"]
   I --> N["14. Ranger"]
+  K --> O["15. StarRocks<br/>TCP 9030"]
   H --> J
   J -->|"bucket warehouse"| K
 ```
@@ -54,10 +56,11 @@ flowchart TB
 | 8 | External Secrets | Vault | Đồng bộ secret từ Vault thành K8s Secret cho app |
 | 9 | Postgres | secrets | Metadata DB của Polaris, Airflow, Metabase, Ranger |
 | 10-14 | Các app | Postgres, secrets | Cài theo thứ tự nào cũng được |
+| 15 | StarRocks | Polaris, Silo | Catalog Iceberg `lakehouse` trỏ vào Polaris |
 
 ## Hai cách làm
 
-- **Theo tutorial** (khuyến nghị lần đầu): làm từng bước 1 → 15, kiểm tra xong
+- **Theo tutorial** (khuyến nghị lần đầu): làm từng bước 1 → 16, kiểm tra xong
   mới sang bước sau. Mỗi bước app chỉ là một lệnh `./scripts/apply-app.sh <app>`.
 - **Một lệnh**: `ENV=uat ./scripts/bootstrap.sh` làm toàn bộ các bước trên.
   Script tự chạy `vault-setup.sh` và tạo Application `root`. Root cài app theo
@@ -85,7 +88,8 @@ Thời gian dựng toàn bộ UAT khoảng 20-25 phút (đo trên Docker Desktop
 | 12 | [Airflow](12-airflow.md) |
 | 13 | [Metabase](13-metabase.md) |
 | 14 | [Ranger](14-ranger.md) |
-| 15 | [Kiểm tra cuối & xử lý sự cố](15-verify-troubleshoot.md) |
-| - | [Tham khảo: cấu trúc repo, môi trường, chart](16-reference.md) |
+| 15 | [StarRocks](15-starrocks.md) |
+| 16 | [Kiểm tra cuối & xử lý sự cố](16-verify-troubleshoot.md) |
+| - | [Tham khảo: cấu trúc repo, môi trường, chart](17-reference.md) |
 
 Tiếp theo: [1. Chuẩn bị máy](01-prerequisites.md)

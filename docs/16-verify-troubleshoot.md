@@ -1,6 +1,6 @@
-# Bước 15: Kiểm tra cuối & xử lý sự cố
+# Bước 16: Kiểm tra cuối & xử lý sự cố
 
-## 15.1 Bật root app (tuỳ chọn)
+## 16.1 Bật root app (tuỳ chọn)
 
 Nếu đã cài từng app bằng `apply-app.sh`, có thể giao toàn bộ cho một
 Application `root` quản lý. Root sẽ nhận (adopt) các Application đã có, và
@@ -10,7 +10,7 @@ sau này thêm app chỉ cần sửa `environments/uat/platform-apps.yaml`:
 ENV=uat ./scripts/bootstrap.sh      # idempotent: bỏ qua bước đã xong, tạo root
 ```
 
-## 15.2 Checklist
+## 16.2 Checklist
 
 ```bash
 kubectl -n argocd get applications
@@ -18,7 +18,7 @@ kubectl -n argocd get applications
 
 Mọi dòng phải là `Synced  Healthy`: `airflow`, `argocd`, `cloudnative-pg`,
 `external-secrets`, `ingress-nginx`, `metabase`, `polaris`, `polaris-console`, `polaris-setup`,
-`platform-secrets`, `postgres`, `ranger`, `silo`, `vault` (cộng `root` nếu có).
+`platform-secrets`, `postgres`, `ranger`, `silo`, `starrocks`, `starrocks-operator`, `starrocks-setup`, `vault` (cộng `root` nếu có).
 
 ```bash
 kubectl get externalsecret -A          # tất cả SecretSynced / True
@@ -30,10 +30,15 @@ for p in /argocd/ /ui/ /airflow/ /metabase/ /polaris/ /silo/ /ranger/login.jsp; 
 done
 ```
 
-Tất cả phải trả `200`. Sau đó mở từng URL trên trình duyệt, đăng nhập và kiểm
+Tất cả phải trả `200`. StarRocks kiểm tra bằng SQL:
+
+```bash
+PW=$(kubectl -n starrocks get secret starrocks-root -o jsonpath='{.data.password}' | base64 -d)
+mysql -h 127.0.0.1 -P 9030 -u root -p"$PW" -e 'SHOW CATALOGS'     # default_catalog, lakehouse
+``` Sau đó mở từng URL trên trình duyệt, đăng nhập và kiểm
 tra tab Network không có request 404 nào tới asset.
 
-## 15.3 Lỗi thường gặp
+## 16.3 Lỗi thường gặp
 
 | Triệu chứng | Nguyên nhân | Bước |
 |---|---|---|
@@ -57,7 +62,7 @@ kubectl -n <ns> logs deploy/<name> --tail=100
 kubectl -n <ns> describe externalsecret <name>
 ```
 
-## 15.4 Dừng, chạy lại, xoá
+## 16.4 Dừng, chạy lại, xoá
 
 ```bash
 # Dừng (giữ dữ liệu)
@@ -78,4 +83,4 @@ bị xoá cùng cluster, xem [bước 3](03-preload-images.md)):
 ENV=uat ./scripts/bootstrap.sh
 ```
 
-Tham khảo thêm: [cấu trúc repo, môi trường, chart](16-reference.md)
+Tham khảo thêm: [cấu trúc repo, môi trường, chart](17-reference.md)

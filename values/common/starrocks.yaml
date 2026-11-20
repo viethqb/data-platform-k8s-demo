@@ -1,0 +1,70 @@
+# StarRocks shared-nothing cluster: 1 FE + 1 BE.
+#   FE: egret security-patched image (https://github.com/egret-data/egret-starrocks)
+#   BE: official image (no egret patch touches BE/CN)
+starrocksCluster:
+  name: starrocks          # services: starrocks-fe-service, starrocks-be-service
+  enabledBe: true
+  enabledCn: false
+
+timeZone: Asia/Ho_Chi_Minh
+
+# The operator gives FE/BE the root password (MYSQL_PWD) from this Secret
+# (External Secrets, Vault secret/platform/starrocks). The chart's own init job
+# is off (isInstall: false) because it would rerun on every Argo CD sync;
+# charts/starrocks-setup sets the password once instead.
+initPassword:
+  enabled: true
+  isInstall: false
+  passwordSecret: starrocks-root
+
+starrocksFESpec:
+  replicas: 1
+  image:
+    repository: ghcr.io/egret-data/egret-starrocks-fe
+    tag: 4.1.7-egret.4
+  resources:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+    limits:
+      memory: 3Gi
+  storageSpec:
+    name: fe
+    storageSize: 5Gi
+    logStorageSize: 2Gi
+  config: |
+    LOG_DIR = ${STARROCKS_HOME}/log
+    DATE = "$(date +%Y%m%d-%H%M%S)"
+    JAVA_OPTS="-Dlog4j2.formatMsgNoLookups=true -Xmx2048m -XX:+UseG1GC -Xlog:gc*:${LOG_DIR}/fe.gc.log.$DATE:time"
+    http_port = 8030
+    rpc_port = 9020
+    query_port = 9030
+    edit_log_port = 9010
+    mysql_service_nio_enabled = true
+    sys_log_level = INFO
+    min_graceful_exit_time_second = 25
+    # Single BE: one replica per tablet.
+    default_replication_num = 1
+
+starrocksBeSpec:
+  replicas: 1
+  image:
+    repository: starrocks/be-ubuntu
+    tag: "4.1.7"
+  resources:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+    limits:
+      memory: 4Gi
+  storageSpec:
+    name: be
+    storageSize: 10Gi
+    logStorageSize: 2Gi
+  config: |
+    be_port = 9060
+    webserver_port = 8040
+    heartbeat_service_port = 9050
+    brpc_port = 8060
+    sys_log_level = INFO
+    default_rowset_type = beta

@@ -1,0 +1,23 @@
+apiVersion: v2
+appVersion: 1.11.8
+description: A Helm chart for StarRocks operator
+home: https://github.com/StarRocks/starrocks-kubernetes-operator
+icon: https://avatars.githubusercontent.com/u/88238841
+keywords:
+- operator
+- starrocks
+- database
+- olap
+kubeVersion: '>=1.23.0-0'
+maintainers:
+- email: caixiaohua@starrocks.com
+  name: Kevin Cai
+- email: shensida@starrocks.com
+  name: SidaShen
+- email: yandongxiao@starrocks.com
+  name: Dongxiao Yan
+name: operator
+sources:
+- https://github.com/StarRocks/starrocks
+type: application
+version: 1.11.8

@@ -1,0 +1,69 @@
+{{- /*
+Plain Job (not an Argo CD hook, see charts/polaris-setup for why). The name
+carries a checksum of the values; every step is idempotent.
+*/}}
+{{- $c := .Values.icebergCatalog }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: starrocks-setup-{{ .Values | toJson | sha256sum | trunc 8 }}
+spec:
+  backoffLimit: 20
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: setup
+          image: {{ .Values.image }}
+          env:
+            - name: ROOT_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ .Values.secret }}, key: root-password } }
+            - name: POLARIS_CREDENTIAL
+              valueFrom: { secretKeyRef: { name: {{ .Values.secret }}, key: polaris-credential } }
+            - name: S3_ACCESS_KEY
+              valueFrom: { secretKeyRef: { name: {{ .Values.secret }}, key: s3-access-key } }
+            - name: S3_SECRET_KEY
+              valueFrom: { secretKeyRef: { name: {{ .Values.secret }}, key: s3-secret-key } }
+          command: ["bash", "-ec"]
+          args:
+            - |
+              sr() { mysql -h {{ .Values.fe.host }} -P {{ .Values.fe.port }} -u root "$@"; }
+              until sr --password="$ROOT_PASSWORD" -e 'SELECT 1' >/dev/null 2>&1 \
+                 || sr --skip-password -e 'SELECT 1' >/dev/null 2>&1; do
+                echo "waiting for StarRocks FE"; sleep 10
+              done
+
+              # 1. root password (a new cluster starts with an empty one)
+              if sr --skip-password -e 'SELECT 1' >/dev/null 2>&1; then
+                sr --skip-password -e "SET PASSWORD FOR 'root' = PASSWORD('${ROOT_PASSWORD}')"
+                echo "root password set"
+              else
+                echo "root password already set"
+              fi
+
+              # 2. wait until a BE is alive, so queries can run
+              until sr --password="$ROOT_PASSWORD" -N -e 'SHOW BACKENDS' | grep -q 'true'; do
+                echo "waiting for a live BE"; sleep 10
+              done
+
+              # 3. Iceberg catalog on Polaris (OAuth2 client credentials)
+              sr --password="$ROOT_PASSWORD" -e "
+                CREATE EXTERNAL CATALOG IF NOT EXISTS {{ $c.name }}
+                COMMENT 'Iceberg tables in Apache Polaris (warehouse {{ $c.warehouse }})'
+                PROPERTIES (
+                  'type' = 'iceberg',
+                  'iceberg.catalog.type' = 'rest',
+                  'iceberg.catalog.uri' = '{{ $c.uri }}',
+                  'iceberg.catalog.warehouse' = '{{ $c.warehouse }}',
+                  'iceberg.catalog.security' = 'oauth2',
+                  'iceberg.catalog.oauth2.credential' = '${POLARIS_CREDENTIAL}',
+                  'iceberg.catalog.oauth2.scope' = '{{ $c.scope }}',
+                  'aws.s3.endpoint' = '{{ $c.s3.endpoint }}',
+                  'aws.s3.region' = '{{ $c.s3.region }}',
+                  'aws.s3.enable_path_style_access' = 'true',
+                  'aws.s3.access_key' = '${S3_ACCESS_KEY}',
+                  'aws.s3.secret_key' = '${S3_SECRET_KEY}'
+                )"
+              echo "catalog {{ $c.name }} ready"
+              sr --password="$ROOT_PASSWORD" -e "SHOW DATABASES FROM {{ $c.name }}"
+              echo "starrocks setup done"

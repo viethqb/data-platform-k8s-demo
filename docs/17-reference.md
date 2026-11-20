@@ -8,6 +8,8 @@ charts/
   ingress-nginx/ polaris/ vault/                         (pin version, kèm subchart)
   postgres-cluster/ silo/ metabase/ ranger-admin/        chart local
   polaris-setup/ polaris-console/                        chart local (Polaris)
+  starrocks-operator/ starrocks/                         chart upstream (StarRocks)
+  starrocks-setup/                                       chart local (StarRocks)
   platform-secrets/                                      ClusterSecretStore + ExternalSecret
   platform-apps/                                         app-of-apps cho một môi trường
 values/common/<app>.yaml                                 values dùng chung mọi môi trường
@@ -40,6 +42,8 @@ scripts/
 | `external-secrets` | charts.external-secrets.io | 2.15.0 |
 | `cloudnative-pg` | cloudnative-pg.github.io/charts | 0.29.2 |
 | `polaris` | git tag `apache-polaris-1.9.0` (`helm/polaris`) | 1.9.0 |
+| `starrocks-operator` | starrocks.github.io/starrocks-kubernetes-operator (`operator`) | 1.11.8 |
+| `starrocks` | starrocks.github.io/starrocks-kubernetes-operator | 1.11.8 (FE image egret `4.1.7-egret.4`) |
 | `airflow` | airflow.apache.org | 1.22.0 |
 
 Nâng version: sửa trong `scripts/vendor-charts.sh`, rồi chạy:

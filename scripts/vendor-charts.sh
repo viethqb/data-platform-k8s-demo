@@ -8,7 +8,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# name|repo|version     (repo "git:<url>#<tag>:<path>" = chart taken from a Git tag)
+# name|repo|version[|dir]   (repo "git:<url>#<tag>:<path>" = chart taken from a Git tag;
+#                            dir = folder under charts/ when it differs from the chart name)
 CHARTS="
 ingress-nginx|https://kubernetes.github.io/ingress-nginx|4.15.1
 argo-cd|https://argoproj.github.io/argo-helm|10.18.2
@@ -17,16 +18,19 @@ airflow|https://airflow.apache.org|1.22.0
 vault|https://helm.releases.hashicorp.com|0.34.1
 external-secrets|https://charts.external-secrets.io|2.15.0
 polaris|git:https://github.com/apache/polaris.git#apache-polaris-1.9.0:helm/polaris|1.9.0
+operator|https://starrocks.github.io/starrocks-kubernetes-operator|1.11.8|starrocks-operator
+starrocks|https://starrocks.github.io/starrocks-kubernetes-operator|1.11.8
 "
 
 ONLY="${1:-}"
 tmp="$(mktemp -d)"
 trap 'rm -rf "${tmp}"' EXIT
 
-while IFS='|' read -r name repo version; do
+while IFS='|' read -r name repo version dir; do
   [ -n "${name}" ] || continue
-  [ -z "${ONLY}" ] || [ "${ONLY}" = "${name}" ] || continue
-  echo "==> ${name} ${version}"
+  dir="${dir:-${name}}"
+  [ -z "${ONLY}" ] || [ "${ONLY}" = "${dir}" ] || continue
+  echo "==> ${dir} (${name} ${version})"
   if [ "${repo#git:}" != "${repo}" ]; then
     # Chart published only as source (e.g. Apache Polaris): sparse-clone the tag.
     spec="${repo#git:}"; url="${spec%%#*}"; rest="${spec#*#}"; tag="${rest%%:*}"; path="${rest#*:}"
@@ -37,6 +41,6 @@ while IFS='|' read -r name repo version; do
   else
     helm pull "${name}" --repo "${repo}" --version "${version}" --untar -d "${tmp}"
   fi
-  rm -rf "${ROOT_DIR}/charts/${name}"
-  mv "${tmp}/${name}" "${ROOT_DIR}/charts/${name}"
+  rm -rf "${ROOT_DIR}/charts/${dir}"
+  mv "${tmp}/${name}" "${ROOT_DIR}/charts/${dir}"
 done <<<"${CHARTS}"

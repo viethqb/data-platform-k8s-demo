@@ -56,4 +56,4 @@ curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' https://data-uat.127.0.
 # 302 https://data-uat.127.0.0.1.nip.io/ranger/login.jsp
 ```
 
-Tiếp theo: [15. Kiểm tra cuối](15-verify-troubleshoot.md)
+Tiếp theo: [15. StarRocks](15-starrocks.md)

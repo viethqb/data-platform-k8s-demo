@@ -136,6 +136,7 @@ seed platform/airflow \
 seed platform/ranger "admin-password=Rgr$(rand 6)1"
 seed platform/silo "root-user=admin" "root-password=$(rand)"
 seed platform/polaris "root-client-secret=$(rand)" "token-key=$(rand 32)"
+seed platform/starrocks "root-password=$(rand)"
 
 echo
 echo "Vault UI: ${BASE_URL}/ui  ->  method Username, user admin, password:"

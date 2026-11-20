@@ -1,0 +1,5 @@
+apiVersion: v2
+name: starrocks-setup
+description: One-shot setup for StarRocks - root password, Iceberg catalog on Apache Polaris
+type: application
+version: 0.1.0

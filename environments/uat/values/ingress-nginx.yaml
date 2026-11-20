@@ -14,3 +14,8 @@ controller:
   config:
     # Redirect all HTTP to HTTPS, also for Ingresses without a tls section.
     force-ssl-redirect: "true"
+
+# TCP passthrough (needs the same port in kind-cluster.yaml): StarRocks MySQL
+# protocol on 127.0.0.1:9030 -> starrocks-fe-service:9030.
+tcp:
+  "9030": starrocks/starrocks-fe-service:9030
