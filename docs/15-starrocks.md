@@ -63,7 +63,7 @@ ENV=uat ./scripts/apply-app.sh starrocks-setup --wait
 |---|---|---|
 | `starrocks-operator` | `charts/starrocks-operator` (vendor `operator` 1.11.8) | Operator + CRD `StarRocksCluster` |
 | `starrocks` | `charts/starrocks` (vendor 1.11.8) | 1 FE + 1 BE, `default_replication_num = 1` |
-| `starrocks-setup` | `charts/starrocks-setup` | Job: đặt mật khẩu root → chờ BE sống → tạo catalog `lakehouse` |
+| `starrocks-setup` | `charts/starrocks-setup` | Job: đặt mật khẩu root → chờ BE sống → tạo (hoặc tạo lại) catalog `lakehouse` |
 
 ### Mật khẩu root
 
@@ -86,6 +86,7 @@ CREATE EXTERNAL CATALOG IF NOT EXISTS lakehouse PROPERTIES (
   'iceberg.catalog.security' = 'oauth2',
   'iceberg.catalog.oauth2.credential' = '<client_id>:<client_secret>',
   'iceberg.catalog.oauth2.scope' = 'PRINCIPAL_ROLE:ALL',
+  'iceberg.catalog.vended-credentials-enabled' = 'false',
   'aws.s3.endpoint' = 'http://silo.silo.svc:9000',
   'aws.s3.region' = 'us-east-1',
   'aws.s3.enable_path_style_access' = 'true',
@@ -93,6 +94,16 @@ CREATE EXTERNAL CATALOG IF NOT EXISTS lakehouse PROPERTIES (
   'aws.s3.secret_key' = '...'
 );
 ```
+
+- **`vended-credentials-enabled = false`**: Polaris chạy với `stsUnavailable`
+  nên không cấp credential S3 tạm. Thiếu dòng này thì tạo bảng báo
+  `Credential vending was requested for table ..., but no credentials are available`.
+  StarRocks dùng key Silo của chính nó (`aws.s3.*`).
+- **Đổi cấu hình catalog**: lệnh `CREATE` nằm trong ConfigMap `starrocks-setup`.
+  Job ghi checksum của nó vào `COMMENT` của catalog; khi checksum khác, Job
+  `DROP` rồi tạo lại catalog. Catalog chỉ là con trỏ tới Polaris, bảng và dữ
+  liệu không bị ảnh hưởng. Tên Job chứa checksum của script, nên mọi thay đổi
+  đều làm Job chạy lại.
 
 Lab dùng principal `root` của Polaris và key root của Silo cho gọn. Môi trường
 thật nên tạo một principal Polaris riêng cho StarRocks (chỉ có quyền trên
@@ -108,18 +119,37 @@ mysql -h 127.0.0.1 -P 19030 -u root -p"$PW" -e "SHOW BACKENDS\G" | grep -E 'Aliv
 Ghi và đọc một bảng Iceberg (dữ liệu nằm trên Silo, metadata trong Polaris):
 
 ```sql
-CREATE DATABASE IF NOT EXISTS lakehouse.demo;
-CREATE TABLE lakehouse.demo.cities (id BIGINT, name STRING);
-INSERT INTO lakehouse.demo.cities VALUES (1, 'Hanoi'), (2, 'Saigon');
-SELECT * FROM lakehouse.demo.cities;
+CREATE DATABASE IF NOT EXISTS lakehouse.sales;
+CREATE TABLE IF NOT EXISTS lakehouse.sales.orders (id BIGINT, city STRING, amount DOUBLE);
+INSERT INTO lakehouse.sales.orders VALUES (1,'Hanoi',120.5),(2,'Saigon',99.0),(3,'Danang',45.25),(4,'Hanoi',30.0);
+SELECT city, COUNT(*) n, SUM(amount) total FROM lakehouse.sales.orders GROUP BY city ORDER BY total DESC;
+SELECT snapshot_id, operation FROM lakehouse.sales.orders$snapshots;
 ```
 
-Sau đó vào Polaris Console → **Catalogs → lakehouse → demo** sẽ thấy bảng
-`cities`.
+```text
++--------+------+-------+
+| city   | n    | total |
++--------+------+-------+
+| Hanoi  |    2 | 150.5 |
+| Saigon |    1 |    99 |
+| Danang |    1 | 45.25 |
++--------+------+-------+
+```
+
+Sau đó vào Polaris Console → **Catalogs → lakehouse → sales** sẽ thấy bảng
+`orders`; file dữ liệu nằm trong bucket `warehouse` của Silo.
+
+Kiểm tra FE đúng là image đã vá:
+
+```bash
+kubectl -n starrocks exec starrocks-fe-0 -- cat /opt/starrocks/fe/EGRET-PATCHES.txt
+```
 
 ## Metabase
 
-Image Metabase chính thức không có driver StarRocks. Có thể thêm database kiểu
-**MySQL** trỏ vào `starrocks-fe-service.starrocks.svc:9030` để query cơ bản.
+Image Metabase chính thức không có driver StarRocks. Có thể thử thêm database
+kiểu **MySQL** trỏ vào `starrocks-fe-service.starrocks.svc:9030`
+(chưa kiểm chứng trong lab này). Driver StarRocks riêng cần một image Metabase
+build kèm driver.
 
 Tiếp theo: [16. Kiểm tra cuối](16-verify-troubleshoot.md)
