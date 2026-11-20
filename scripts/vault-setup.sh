@@ -104,23 +104,32 @@ printf '%s\n%s\n' "${ROOT_TOKEN}" "${ADMIN_PW}" | kc -n "${NS}" exec -i "${POD}"
 echo "userpass user admin (policy admin)"
 
 log "seed secret/platform/*"
-# seed <path> <key=value>...   (only when the path does not exist yet)
+# seed <path> <key=value>...
+# Creates the path, or adds the keys it does not have yet. Existing values are
+# never overwritten, so reruns keep every password that is in use.
 seed() {
   local path="$1"; shift
-  if vault_cmd "vault kv get -mount=secret ${path} >/dev/null 2>&1"; then
+  local existing missing=() kv
+  existing="$(vault_cmd "vault kv get -mount=secret -format=json ${path} 2>/dev/null" || true)"
+  for kv in "$@"; do
+    grep -q "\"${kv%%=*}\":" <<<"${existing}" || missing+=("${kv}")
+  done
+  if [ "${#missing[@]}" -eq 0 ]; then
     echo "keep   secret/${path}"
     return
   fi
-  # Values go through stdin as KEY=VALUE lines, then into `vault kv put`.
-  printf '%s\n' "$@" | {
+  local op=put verb=create
+  if [ -n "${existing}" ]; then op=patch; verb="add ${#missing[@]} key(s) to"; fi
+  # Values go through stdin as KEY=VALUE lines, then into `vault kv put|patch`.
+  printf '%s\n' "${missing[@]}" | {
     printf '%s\n' "${ROOT_TOKEN}"
     cat
   } | kc -n "${NS}" exec -i "${POD}" -- sh -c '
       read -r VAULT_TOKEN; export VAULT_TOKEN
       set --
       while IFS= read -r kv; do set -- "$@" "$kv"; done
-      vault kv put -mount=secret '"${path}"' "$@" >/dev/null'
-  echo "create secret/${path}"
+      vault kv '"${op}"' -mount=secret '"${path}"' "$@" >/dev/null'
+  echo "${verb} secret/${path}"
 }
 
 seed platform/postgres/superuser "password=$(rand)"
@@ -136,7 +145,7 @@ seed platform/airflow \
 seed platform/ranger "admin-password=Rgr$(rand 6)1"
 seed platform/silo "root-user=admin" "root-password=$(rand)"
 seed platform/polaris "root-client-secret=$(rand)" "token-key=$(rand 32)"
-seed platform/starrocks "root-password=$(rand)"
+seed platform/starrocks "root-password=$(rand)" "analyst-password=$(rand 8)"
 
 echo
 echo "Vault UI: ${BASE_URL}/ui  ->  method Username, user admin, password:"

@@ -1,0 +1,23 @@
+# Mounted into the FE conf dir by charts/starrocks (starrocksFESpec.configMaps).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: starrocks-ranger-plugin
+data:
+  ranger-starrocks-security.xml: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <configuration>
+      <property><name>ranger.plugin.starrocks.service.name</name><value>{{ .Values.service.name }}</value></property>
+      <property><name>ranger.plugin.starrocks.policy.rest.url</name><value>{{ .Values.ranger.url }}</value></property>
+      <property><name>ranger.plugin.starrocks.policy.source.impl</name><value>org.apache.ranger.admin.client.RangerAdminRESTClient</value></property>
+      <property><name>ranger.plugin.starrocks.policy.cache.dir</name><value>/opt/starrocks/fe/meta/ranger-policycache</value></property>
+      <property><name>ranger.plugin.starrocks.policy.pollIntervalMs</name><value>{{ .Values.plugin.pollIntervalMs }}</value></property>
+      <property><name>ranger.plugin.starrocks.policy.rest.client.connection.timeoutMs</name><value>30000</value></property>
+      <property><name>ranger.plugin.starrocks.policy.rest.client.read.timeoutMs</name><value>30000</value></property>
+    </configuration>
+  ranger-starrocks-audit.xml: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <configuration>
+      <!-- No audit store in the lab (Ranger runs without Solr/OpenSearch). -->
+      <property><name>xasecure.audit.is.enabled</name><value>false</value></property>
+    </configuration>

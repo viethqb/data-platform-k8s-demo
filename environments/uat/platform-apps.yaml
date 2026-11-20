@@ -8,7 +8,8 @@ targetRevision: main
 # starts the next wave, so heavy apps do not all start at once:
 #   -3 ingress, Argo CD   -2 Vault, ESO, CNPG   -1 secrets   0 Postgres
 #    1 Silo, Polaris       2 Polaris setup/console, Metabase   3 Airflow   4 Ranger
-#    5 StarRocks           6 StarRocks setup (root password, Iceberg catalog on Polaris)
+#    5 StarRocks in Ranger (service def, service, users, policies)
+#    6 StarRocks           7 StarRocks setup (root password, users, Iceberg catalog, demo)
 apps:
   ingress-nginx:
     namespace: ingress-nginx
@@ -72,10 +73,13 @@ apps:
     chart: ranger-admin
     releaseName: ranger-admin
     namespace: ranger
-  starrocks:
+  starrocks-ranger:
     namespace: starrocks
     wave: 5
+  starrocks:
+    namespace: starrocks
+    wave: 6
     syncOptions: [SkipDryRunOnMissingResource=true]
   starrocks-setup:
     namespace: starrocks
-    wave: 6
+    wave: 7

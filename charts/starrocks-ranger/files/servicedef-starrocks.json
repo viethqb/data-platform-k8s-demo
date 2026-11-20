@@ -1,0 +1,672 @@
+{
+ "id": 205,
+ "name": "starrocks",
+ "enums": [],
+ "label": "StarRocks",
+ "configs": [
+  {
+   "name": "username",
+   "type": "string",
+   "label": "Username",
+   "itemId": 1,
+   "uiHint": "",
+   "mandatory": true,
+   "defaultValue": "root",
+   "validationRegEx": "",
+   "validationMessage": ""
+  },
+  {
+   "name": "password",
+   "type": "password",
+   "label": "Password",
+   "itemId": 2,
+   "uiHint": "",
+   "mandatory": false,
+   "validationRegEx": "",
+   "validationMessage": ""
+  },
+  {
+   "name": "jdbc.driverClassName",
+   "type": "string",
+   "itemId": 3,
+   "uiHint": "",
+   "mandatory": true,
+   "defaultValue": "com.mysql.cj.jdbc.Driver",
+   "validationRegEx": "",
+   "validationMessage": ""
+  },
+  {
+   "name": "jdbc.url",
+   "type": "string",
+   "itemId": 4,
+   "uiHint": "",
+   "mandatory": true,
+   "defaultValue": "jdbc:mysql://127.0.0.1:9030",
+   "validationRegEx": "",
+   "validationMessage": ""
+  }
+ ],
+ "implClass": "",
+ "resources": [
+  {
+   "name": "catalog",
+   "type": "string",
+   "label": "StarRocks Catalog",
+   "level": 10,
+   "itemId": 1,
+   "parent": "",
+   "uiHint": "",
+   "matcher": "org.apache.ranger.plugin.resourcematcher.RangerDefaultResourceMatcher",
+   "mandatory": true,
+   "description": "StarRocks Catalog",
+   "isValidLeaf": true,
+   "matcherOptions": {
+    "wildCard": true,
+    "ignoreCase": true
+   },
+   "lookupSupported": true,
+   "validationRegEx": "",
+   "excludesSupported": true,
+   "validationMessage": "",
+   "recursiveSupported": false,
+   "accessTypeRestrictions": [
+    "usage",
+    "create database",
+    "drop",
+    "alter"
+   ]
+  },
+  {
+   "name": "database",
+   "type": "string",
+   "label": "StarRocks Database",
+   "level": 20,
+   "itemId": 2,
+   "parent": "catalog",
+   "uiHint": "",
+   "matcher": "org.apache.ranger.plugin.resourcematcher.RangerDefaultResourceMatcher",
+   "mandatory": true,
+   "description": "StarRocks Database",
+   "isValidLeaf": true,
+   "matcherOptions": {
+    "wildCard": true,
+    "ignoreCase": true
+   },
+   "lookupSupported": true,
+   "validationRegEx": "",
+   "excludesSupported": true,
+   "validationMessage": "",
+   "recursiveSupported": false,
+   "accessTypeRestrictions": [
+    "create table",
+    "drop",
+    "alter",
+    "create view",
+    "create function",
+    "create materialized view"
+   ]
+  },
+  {
+   "name": "table",
+   "type": "string",
+   "label": "StarRocks Table",
+   "level": 30,
+   "itemId": 3,
+   "parent": "database",
+   "uiHint": "",
+   "matcher": "org.apache.ranger.plugin.resourcematcher.RangerDefaultResourceMatcher",
+   "mandatory": true,
+   "description": "StarRocks Table",
+   "isValidLeaf": true,
+   "matcherOptions": {
+    "wildCard": true,
+    "ignoreCase": true
+   },
+   "lookupSupported": true,
+   "validationRegEx": "",
+   "excludesSupported": true,
+   "validationMessage": "",
+   "recursiveSupported": false,
+   "accessTypeRestrictions": [
+    "delete",
+    "drop",
+    "insert",
+    "alter",
+    "export",
+    "update",
+    "refresh"
+   ]
+  },
+  {
+   "name": "column",
+   "type": "string",
+   "label": "StarRocks Column",
+   "level": 40,
+   "itemId": 4,
+   "parent": "table",
+   "uiHint": "",
+   "matcher": "org.apache.ranger.plugin.resourcematcher.RangerDefaultResourceMatcher",
+   "mandatory": true,
+   "description": "StarRocks Column",
+   "isValidLeaf": true,
+   "matcherOptions": {
+    "wildCard": true,
+    "ignoreCase": true
+   },
+   "lookupSupported": true,
+   "validationRegEx": "",
+   "excludesSupported": true,
+   "validationMessage": "",
+   "recursiveSupported": false,
+   "accessTypeRestrictions": [
+    "select"
+   ]
+  },
+  {
+   "name": "view",
+   "type": "string",
+   "label": "StarRocks View",
+   "level": 30,
+   "itemId": 5,
+   "parent": "database",
+   "uiHint": "",
+   "matcher": "org.apache.ranger.plugin.resourcematcher.RangerDefaultResourceMatcher",
+   "mandatory": true,
+   "description": "StarRocks View",
+   "isValidLeaf": true,
+   "matcherOptions": {
+    "wildCard": true,
+    "ignoreCase": true
+   },
+   "lookupSupported": true,
+   "validationRegEx": "",
+   "excludesSupported": true,
+   "validationMessage": "",
+   "recursiveSupported": false,
+   "accessTypeRestrictions": [
+    "drop",
+    "alter"
+   ]
+  },
+  {
+   "name": "materialized_view",
+   "type": "string",
+   "label": "StarRocks Materialized View",
+   "level": 30,
+   "itemId": 6,
+   "parent": "database",
+   "uiHint": "",
+   "matcher": "org.apache.ranger.plugin.resourcematcher.RangerDefaultResourceMatcher",
+   "mandatory": true,
+   "description": "StarRocks Materialized View",
+   "isValidLeaf": true,
+   "matcherOptions": {
+    "wildCard": true,
+    "ignoreCase": true
+   },
+   "lookupSupported": true,
+   "validationRegEx": "",
+   "excludesSupported": true,
+   "validationMessage": "",
+   "recursiveSupported": false,
+   "accessTypeRestrictions": [
+    "refresh",
+    "drop",
+    "alter"
+   ]
+  },
+  {
+   "name": "function",
+   "type": "string",
+   "label": "StarRocks Function",
+   "level": 30,
+   "itemId": 7,
+   "parent": "database",
+   "uiHint": "",
+   "matcher": "org.apache.ranger.plugin.resourcematcher.RangerDefaultResourceMatcher",
+   "mandatory": true,
+   "description": "StarRocks Function",
+   "matcherOptions": {
+    "wildCard": true,
+    "ignoreCase": true
+   },
+   "lookupSupported": true,
+   "validationRegEx": "",
+   "excludesSupported": true,
+   "validationMessage": "",
+   "recursiveSupported": false,
+   "accessTypeRestrictions": [
+    "usage",
+    "drop"
+   ]
+  },
+  {
+   "name": "global_function",
+   "type": "string",
+   "label": "StarRocks Global Function",
+   "level": 10,
+   "itemId": 8,
+   "parent": "",
+   "uiHint": "",
+   "matcher": "org.apache.ranger.plugin.resourcematcher.RangerDefaultResourceMatcher",
+   "mandatory": true,
+   "description": "StarRocks Global Function",
+   "matcherOptions": {
+    "wildCard": true,
+    "ignoreCase": true
+   },
+   "lookupSupported": true,
+   "validationRegEx": "",
+   "excludesSupported": true,
+   "validationMessage": "",
+   "recursiveSupported": false,
+   "accessTypeRestrictions": [
+    "usage",
+    "drop"
+   ]
+  },
+  {
+   "name": "resource",
+   "type": "string",
+   "label": "StarRocks Resource",
+   "level": 10,
+   "itemId": 9,
+   "parent": "",
+   "uiHint": "",
+   "matcher": "org.apache.ranger.plugin.resourcematcher.RangerDefaultResourceMatcher",
+   "mandatory": true,
+   "description": "StarRocks Resource",
+   "matcherOptions": {
+    "wildCard": true,
+    "ignoreCase": true
+   },
+   "lookupSupported": true,
+   "validationRegEx": "",
+   "excludesSupported": true,
+   "validationMessage": "",
+   "recursiveSupported": false,
+   "accessTypeRestrictions": [
+    "usage",
+    "alter",
+    "drop"
+   ]
+  },
+  {
+   "name": "resource_group",
+   "type": "string",
+   "label": "StarRocks Resource Group",
+   "level": 10,
+   "itemId": 10,
+   "parent": "",
+   "uiHint": "",
+   "matcher": "org.apache.ranger.plugin.resourcematcher.RangerDefaultResourceMatcher",
+   "mandatory": true,
+   "description": "StarRocks Resource Group",
+   "matcherOptions": {
+    "wildCard": true,
+    "ignoreCase": true
+   },
+   "lookupSupported": true,
+   "validationRegEx": "",
+   "excludesSupported": true,
+   "validationMessage": "",
+   "recursiveSupported": false,
+   "accessTypeRestrictions": [
+    "alter",
+    "drop"
+   ]
+  },
+  {
+   "name": "storage_volume",
+   "type": "string",
+   "label": "StarRocks Storage Volume",
+   "level": 10,
+   "itemId": 11,
+   "parent": "",
+   "uiHint": "",
+   "matcher": "org.apache.ranger.plugin.resourcematcher.RangerDefaultResourceMatcher",
+   "mandatory": true,
+   "description": "StarRocks Storage Volume",
+   "matcherOptions": {
+    "wildCard": true,
+    "ignoreCase": true
+   },
+   "lookupSupported": true,
+   "validationRegEx": "",
+   "excludesSupported": true,
+   "validationMessage": "",
+   "recursiveSupported": false,
+   "accessTypeRestrictions": [
+    "drop",
+    "alter",
+    "usage"
+   ]
+  },
+  {
+   "name": "user",
+   "type": "string",
+   "label": "StarRocks Storage",
+   "level": 10,
+   "itemId": 12,
+   "parent": "",
+   "uiHint": "",
+   "matcher": "org.apache.ranger.plugin.resourcematcher.RangerDefaultResourceMatcher",
+   "mandatory": true,
+   "description": "StarRocks Storage",
+   "matcherOptions": {
+    "wildCard": true,
+    "ignoreCase": true
+   },
+   "lookupSupported": true,
+   "validationRegEx": "",
+   "excludesSupported": true,
+   "validationMessage": "",
+   "recursiveSupported": false,
+   "accessTypeRestrictions": [
+    "impersonate"
+   ]
+  },
+  {
+   "name": "system",
+   "type": "string",
+   "label": "StarRocks System",
+   "level": 10,
+   "itemId": 13,
+   "parent": "",
+   "uiHint": "",
+   "mandatory": true,
+   "description": "StarRocks System",
+   "lookupSupported": true,
+   "validationRegEx": "\\*",
+   "excludesSupported": true,
+   "validationMessage": "System only supports wildcard '*'",
+   "recursiveSupported": false,
+   "accessTypeRestrictions": [
+    "grant",
+    "node",
+    "create resource",
+    "plugin",
+    "file",
+    "blacklist",
+    "operate",
+    "create external catalog",
+    "repository",
+    "create resource group",
+    "create global function",
+    "create storage volume"
+   ]
+  }
+ ],
+ "accessTypes": [
+  {
+   "name": "grant",
+   "label": "GRANT",
+   "itemId": 1
+  },
+  {
+   "name": "node",
+   "label": "NODE",
+   "itemId": 2
+  },
+  {
+   "name": "operate",
+   "label": "OPERATE",
+   "itemId": 3
+  },
+  {
+   "name": "delete",
+   "label": "DELETE",
+   "itemId": 4
+  },
+  {
+   "name": "drop",
+   "label": "DROP",
+   "itemId": 5
+  },
+  {
+   "name": "insert",
+   "label": "INSERT",
+   "itemId": 6
+  },
+  {
+   "name": "select",
+   "label": "SELECT",
+   "itemId": 7
+  },
+  {
+   "name": "alter",
+   "label": "ALTER",
+   "itemId": 8
+  },
+  {
+   "name": "export",
+   "label": "EXPORT",
+   "itemId": 9
+  },
+  {
+   "name": "update",
+   "label": "UPDATE",
+   "itemId": 10
+  },
+  {
+   "name": "usage",
+   "label": "USAGE",
+   "itemId": 11
+  },
+  {
+   "name": "plugin",
+   "label": "PLUGIN",
+   "itemId": 12
+  },
+  {
+   "name": "file",
+   "label": "FILE",
+   "itemId": 13
+  },
+  {
+   "name": "blacklist",
+   "label": "BLACKLIST",
+   "itemId": 14
+  },
+  {
+   "name": "repository",
+   "label": "REPOSITORY",
+   "itemId": 15
+  },
+  {
+   "name": "refresh",
+   "label": "REFRESH",
+   "itemId": 16
+  },
+  {
+   "name": "impersonate",
+   "label": "IMPERSONATE",
+   "itemId": 17
+  },
+  {
+   "name": "create database",
+   "label": "CREATE DATABASE",
+   "itemId": 18
+  },
+  {
+   "name": "create table",
+   "label": "CREATE TABLE",
+   "itemId": 19
+  },
+  {
+   "name": "create view",
+   "label": "CREATE VIEW",
+   "itemId": 20
+  },
+  {
+   "name": "create function",
+   "label": "CREATE FUNCTION",
+   "itemId": 21
+  },
+  {
+   "name": "create global function",
+   "label": "CREATE GLOBAL FUNCTION",
+   "itemId": 22
+  },
+  {
+   "name": "create materialized view",
+   "label": "CREATE MATERIALIZED VIEW",
+   "itemId": 23
+  },
+  {
+   "name": "create resource",
+   "label": "CREATE RESOURCE",
+   "itemId": 24
+  },
+  {
+   "name": "create resource group",
+   "label": "CREATE RESOURCE GROUP",
+   "itemId": 25
+  },
+  {
+   "name": "create external catalog",
+   "label": "CREATE EXTERNAL CATALOG",
+   "itemId": 26
+  },
+  {
+   "name": "create storage volume",
+   "label": "CREATE STORAGE VOLUME",
+   "itemId": 27
+  }
+ ],
+ "dataMaskDef": {
+  "maskTypes": [
+   {
+    "name": "MASK",
+    "label": "Redact",
+    "itemId": 1,
+    "description": "Replace lowercase with 'x', uppercase with 'X', digits with '0'",
+    "transformer": "cast(regexp_replace(regexp_replace(regexp_replace({col},'([A-Z])', 'X'),'([a-z])','x'),'([0-9])','0') as {type})",
+    "dataMaskOptions": {}
+   },
+   {
+    "name": "MASK_HASH",
+    "label": "Hash",
+    "itemId": 2,
+    "description": "Hash the value of a varchar with sha256",
+    "transformer": "cast((hex(sha2(from_binary(to_binary({col}, 'utf8'), 'utf8'), 256))) AS {type})"
+   },
+   {
+    "name": "MASK_NULL",
+    "label": "Nullify",
+    "itemId": 3,
+    "description": "Replace with NULL"
+   },
+   {
+    "name": "MASK_NONE",
+    "label": "Unmasked (retain original value)",
+    "itemId": 4,
+    "description": "No masking"
+   },
+   {
+    "name": "MASK_DATE_SHOW_YEAR",
+    "label": "Date: show only year",
+    "itemId": 5,
+    "description": "Date: show only year",
+    "transformer": "date_trunc('year', {col})"
+   },
+   {
+    "name": "CUSTOM",
+    "label": "Custom",
+    "itemId": 6,
+    "description": "Custom"
+   }
+  ],
+  "resources": [
+   {
+    "name": "catalog",
+    "uiHint": "{ \"singleValue\":true }",
+    "matcherOptions": {
+     "wildCard": "true"
+    },
+    "lookupSupported": true
+   },
+   {
+    "name": "database",
+    "uiHint": "{ \"singleValue\":true }",
+    "matcherOptions": {
+     "wildCard": "true"
+    },
+    "lookupSupported": true
+   },
+   {
+    "name": "table",
+    "uiHint": "{ \"singleValue\":true }",
+    "matcherOptions": {
+     "wildCard": "true"
+    },
+    "lookupSupported": true
+   },
+   {
+    "name": "column",
+    "uiHint": "{ \"singleValue\":true }",
+    "matcherOptions": {
+     "wildCard": "true"
+    },
+    "lookupSupported": true
+   }
+  ],
+  "accessTypes": [
+   {
+    "name": "select"
+   }
+  ]
+ },
+ "description": "StarRocks",
+ "displayName": "starrocks",
+ "rowFilterDef": {
+  "resources": [
+   {
+    "name": "catalog",
+    "uiHint": "{ \"singleValue\":true }",
+    "mandatory": true,
+    "matcherOptions": {
+     "wildCard": "true"
+    },
+    "lookupSupported": true
+   },
+   {
+    "name": "database",
+    "uiHint": "{ \"singleValue\":true }",
+    "mandatory": true,
+    "matcherOptions": {
+     "wildCard": "true"
+    },
+    "lookupSupported": true
+   },
+   {
+    "name": "table",
+    "uiHint": "{ \"singleValue\":true }",
+    "mandatory": true,
+    "matcherOptions": {
+     "wildCard": "true"
+    },
+    "lookupSupported": true
+   }
+  ],
+  "accessTypes": [
+   {
+    "name": "select"
+   }
+  ]
+ },
+ "contextEnrichers": [],
+ "policyConditions": [
+  {
+   "name": "ip-range",
+   "label": "IP Address Range",
+   "itemId": 100,
+   "uiHint": "",
+   "evaluator": "org.apache.ranger.plugin.conditionevaluator.RangerIpMatcher",
+   "description": "IP Address Range",
+   "validationRegEx": "",
+   "evaluatorOptions": {},
+   "validationMessage": ""
+  }
+ ]
+}

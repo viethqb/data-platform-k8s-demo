@@ -1,0 +1,35 @@
+image: docker.io/library/python:3.13-slim
+
+ranger:
+  # Ranger Admin inside the cluster (context path /ranger)
+  url: http://ranger-admin.ranger.svc:6080/ranger
+  adminUser: admin
+
+# Secret (External Secrets) with key ranger-admin-password
+secret: starrocks-ranger
+
+# Ranger service the StarRocks FE plugin downloads policies from
+service:
+  name: starrocks
+  jdbcUrl: jdbc:mysql://starrocks-fe-service.starrocks.svc:9030
+  description: StarRocks (managed by charts/starrocks-ranger)
+
+plugin:
+  # How often the FE polls Ranger Admin for policy changes
+  pollIntervalMs: 10000
+
+# Users that get every privilege on every resource (one policy per resource
+# hierarchy of the service definition). StarRocks root is governed by Ranger
+# too once access_control = ranger, so it must be listed here.
+superUsers:
+  - root
+
+# Ranger users to create (the StarRocks side creates its own users)
+users: []
+
+# Policies. type: access | rowFilter | mask
+#   resources: {catalog, database, table, column}; "*" = all
+#   access:    accesses: [select, insert, ...]
+#   rowFilter: filter: "<SQL expression>"
+#   mask:      maskType: MASK_NULL | MASK | MASK_HASH | MASK_NONE | MASK_DATE_SHOW_YEAR
+policies: []

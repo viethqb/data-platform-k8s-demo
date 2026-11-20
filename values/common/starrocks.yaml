@@ -28,6 +28,14 @@ starrocksFESpec:
       memory: 2Gi
     limits:
       memory: 3Gi
+  # Ranger plugin config (ConfigMap from charts/starrocks-ranger), in the FE conf dir.
+  configMaps:
+    - name: starrocks-ranger-plugin
+      mountPath: /opt/starrocks/fe/conf/ranger-starrocks-security.xml
+      subPath: ranger-starrocks-security.xml
+    - name: starrocks-ranger-plugin
+      mountPath: /opt/starrocks/fe/conf/ranger-starrocks-audit.xml
+      subPath: ranger-starrocks-audit.xml
   storageSpec:
     name: fe
     storageSize: 5Gi
@@ -45,6 +53,8 @@ starrocksFESpec:
     min_graceful_exit_time_second = 25
     # Single BE: one replica per tablet.
     default_replication_num = 1
+    # Authorisation in Apache Ranger (charts/starrocks-ranger: service "starrocks").
+    access_control = ranger
 
 starrocksBeSpec:
   replicas: 1

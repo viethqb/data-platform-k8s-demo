@@ -1,0 +1,25 @@
+# StarRocks authorisation in Apache Ranger (access_control = ranger on the FE).
+superUsers:
+  - root
+
+# Demo: "analyst" may read lakehouse.sales.orders, only the Hanoi rows,
+# with the amount column masked. The table is created by charts/starrocks-setup.
+users:
+  - analyst
+
+policies:
+  - name: analyst-read-orders
+    type: access
+    resources: { catalog: lakehouse, database: sales, table: orders, column: "*" }
+    users: [analyst]
+    accesses: [select]
+  - name: analyst-orders-hanoi-only
+    type: rowFilter
+    resources: { catalog: lakehouse, database: sales, table: orders }
+    users: [analyst]
+    filter: "city = 'Hanoi'"
+  - name: analyst-mask-amount
+    type: mask
+    resources: { catalog: lakehouse, database: sales, table: orders, column: amount }
+    users: [analyst]
+    maskType: MASK_NULL

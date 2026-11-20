@@ -1,0 +1,8 @@
+# Users whose privileges are defined in Ranger (values/common/starrocks-ranger.yaml)
+users:
+  - name: analyst
+    passwordKey: analyst-password
+
+# Demo table for the Ranger policies (row filter + mask for analyst)
+demo:
+  enabled: true

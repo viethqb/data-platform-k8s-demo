@@ -24,6 +24,10 @@ spec:
               valueFrom: { secretKeyRef: { name: {{ .Values.secret }}, key: s3-access-key } }
             - name: S3_SECRET_KEY
               valueFrom: { secretKeyRef: { name: {{ .Values.secret }}, key: s3-secret-key } }
+            {{- range $i, $u := .Values.users }}
+            - name: USER_PASSWORD_{{ $i }}
+              valueFrom: { secretKeyRef: { name: {{ $.Values.secret }}, key: {{ $u.passwordKey }} } }
+            {{- end }}
           command: ["bash", "/setup/setup.sh"]
           volumeMounts:
             - name: setup

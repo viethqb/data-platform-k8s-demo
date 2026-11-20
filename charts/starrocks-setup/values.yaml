@@ -8,6 +8,16 @@ fe:
 # (<client_id>:<client_secret>), s3-access-key, s3-secret-key
 secret: starrocks-setup
 
+# StarRocks users to create; passwords are keys of the secret above.
+# Their privileges live in Ranger (charts/starrocks-ranger), not in GRANTs.
+users: []
+#  - name: analyst
+#    passwordKey: analyst-password
+
+# Demo table lakehouse.sales.orders with a few rows (only filled when empty)
+demo:
+  enabled: false
+
 # External catalog on Polaris (charts/polaris-setup creates the "lakehouse" warehouse)
 icebergCatalog:
   name: lakehouse
