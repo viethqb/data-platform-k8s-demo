@@ -19,6 +19,13 @@ service:
 # connects to StarRocks as this user; its password is the secret key
 # ranger-lookup-password, and it needs a Ranger policy that lets it list
 # catalogs, databases, tables and columns.
+# Tag service linked to the StarRocks service: tag-based policies (e.g. mask
+# every column tagged PII). Tags are attached through Ranger's tag REST API
+# (or a tag source such as Apache Atlas).
+tagService:
+  enabled: false
+  name: starrocks_tag
+
 lookup:
   enabled: false
   implClass: org.apache.ranger.services.starrocks.RangerServiceStarRocks

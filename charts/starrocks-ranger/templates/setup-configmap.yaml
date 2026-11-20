@@ -6,6 +6,6 @@ data:
   servicedef-starrocks.json: |
 {{ .Files.Get "files/servicedef-starrocks.json" | indent 4 }}
   config.json: |
-{{ dict "rangerUrl" .Values.ranger.url "adminUser" .Values.ranger.adminUser "service" .Values.service "lookup" .Values.lookup "superUsers" .Values.superUsers "users" .Values.users "policies" .Values.policies | toPrettyJson | indent 4 }}
+{{ dict "rangerUrl" .Values.ranger.url "adminUser" .Values.ranger.adminUser "service" .Values.service "lookup" .Values.lookup "tagService" .Values.tagService "superUsers" .Values.superUsers "users" .Values.users "policies" .Values.policies | toPrettyJson | indent 4 }}
   ranger_setup.py: |
 {{ .Files.Get "files/ranger_setup.py" | indent 4 }}

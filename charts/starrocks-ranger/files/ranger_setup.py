@@ -109,7 +109,7 @@ def desired_service():
     else:
         # Only used by the resource lookup, which is disabled.
         user, password = "root", "unused"
-    return {
+    service = {
         "name": SERVICE,
         "type": SERVICEDEF["name"],
         "description": CONFIG["service"].get("description", ""),
@@ -121,9 +121,32 @@ def desired_service():
             "jdbc.url": CONFIG["service"]["jdbcUrl"],
         },
     }
+    if TAG_SERVICE:
+        # Linking a tag service makes Ranger add the TagEnricher to what the plugin
+        # downloads, so tag-based policies apply to StarRocks resources.
+        service["tagService"] = TAG_SERVICE
+    return service
+
+
+TAG_SERVICE = (CONFIG.get("tagService") or {}).get("name") if (CONFIG.get("tagService") or {}).get("enabled") else None
+
+
+def ensure_tag_service():
+    if not TAG_SERVICE:
+        return
+    status, _ = call("GET", f"/service/public/v2/api/service/name/{TAG_SERVICE}")
+    if status == 200:
+        print(f"tag service {TAG_SERVICE}: exists")
+        return
+    call("POST", "/service/public/v2/api/service", {
+        "name": TAG_SERVICE, "type": "tag", "isEnabled": True, "configs": {},
+        "description": "Tag-based policies for StarRocks (managed by starrocks-ranger)",
+    })
+    print(f"tag service {TAG_SERVICE}: created")
 
 
 def ensure_service():
+    ensure_tag_service()
     desired = desired_service()
     status, existing = call("GET", f"/service/public/v2/api/service/name/{SERVICE}")
     if status != 200:

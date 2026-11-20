@@ -12,6 +12,11 @@ lookup:
   enabled: true
   user: ranger_lookup
 
+# Tag-based policies (service starrocks_tag), exercised by scripts/test-ranger-starrocks.py
+tagService:
+  enabled: true
+  name: starrocks_tag
+
 # Demo: "analyst" may read lakehouse.sales.orders, only the Hanoi rows,
 # with the amount column masked. The table is created by charts/starrocks-setup.
 users:
