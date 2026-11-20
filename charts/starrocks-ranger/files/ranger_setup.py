@@ -71,12 +71,13 @@ def desired_servicedef():
 
 
 def servicedef_signature(d):
-    """The parts that matter; Ranger adds ids/defaults, so whole documents never compare equal."""
-    names = lambda items: [i.get("name") for i in items or []]
+    """The parts that matter; Ranger adds ids/defaults and reorders lists, so whole
+    documents never compare equal."""
+    names = lambda items: sorted(i.get("name") for i in items or [])
     return {
         "implClass": d.get("implClass") or "",
-        "resources": [(r["name"], r.get("parent", ""), sorted(r.get("accessTypeRestrictions") or []))
-                      for r in d.get("resources", [])],
+        "resources": sorted((r["name"], r.get("parent", ""), tuple(sorted(r.get("accessTypeRestrictions") or [])))
+                            for r in d.get("resources", [])),
         "accessTypes": names(d.get("accessTypes")),
         "configs": names(d.get("configs")),
         "contextEnrichers": names(d.get("contextEnrichers")),
