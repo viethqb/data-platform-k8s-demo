@@ -81,6 +81,7 @@ Thời gian dựng toàn bộ UAT khoảng 20-25 phút (đo trên Docker Desktop
 | 9 | [PostgreSQL (CloudNativePG)](09-postgres.md) |
 | 10 | [Silo](10-silo.md) |
 | 11 | [Lakekeeper](11-lakekeeper.md) |
+| 11b | [Polaris (thử nghiệm, chạy song song)](11b-polaris.md) |
 | 12 | [Airflow](12-airflow.md) |
 | 13 | [Metabase](13-metabase.md) |
 | 14 | [Ranger](14-ranger.md) |

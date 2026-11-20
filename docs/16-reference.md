@@ -22,6 +22,7 @@ scripts/
   tls.sh                 cert mkcert -> secret ingress-nginx/platform-tls
   apply-app.sh           tạo Application cho một app (--wait để chờ)
   vault-setup.sh         init / unseal / cấu hình / seed Vault
+  build-images.sh        build image không có bản phát hành (Polaris Console) -> localhost:5001
   render.sh              render offline giống Argo CD
   vendor-charts.sh       cập nhật chart upstream
   credentials.sh         in URL + tài khoản

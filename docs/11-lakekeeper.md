@@ -78,4 +78,4 @@ Sau đó tạo warehouse (UI: *Warehouses → Add*) với storage S3:
 | Bucket | `warehouse` |
 | Access / Secret key | user của Silo (nên tạo user riêng thay vì dùng root) |
 
-Tiếp theo: [12. Airflow](12-airflow.md)
+Tiếp theo: [11b. Polaris (thử nghiệm)](11b-polaris.md) hoặc [12. Airflow](12-airflow.md)
