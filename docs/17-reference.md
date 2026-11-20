@@ -13,6 +13,10 @@ charts/
   platform-secrets/                                      ClusterSecretStore + ExternalSecret
   platform-apps/                                         app-of-apps cho một môi trường
 values/common/<app>.yaml                                 values dùng chung mọi môi trường
+images/
+  polaris-console/      Polaris Console + patch base path (build từ source)
+  ranger-admin/         apache/ranger + plugin lookup StarRocks
+                        mỗi thư mục: image.env (tên, tag, nguồn, sha256), prepare.sh, Dockerfile/patch
 environments/<env>/
   env.sh                 CLUSTER_NAME, HOST, PUBLIC_URL, TLS_SECRET
   kind-cluster.yaml      kind cluster
