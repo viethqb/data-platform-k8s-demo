@@ -124,7 +124,7 @@ seed() {
 }
 
 seed platform/postgres/superuser "password=$(rand)"
-for app in lakekeeper airflow metabase ranger; do
+for app in lakekeeper airflow metabase ranger polaris; do
   seed "platform/postgres/${app}" "password=$(rand)"
 done
 seed platform/lakekeeper "encryption-key=$(rand 32)"
@@ -136,6 +136,7 @@ seed platform/airflow \
 # Ranger requires >= 8 chars with both letters and digits.
 seed platform/ranger "admin-password=Rgr$(rand 6)1"
 seed platform/silo "root-user=admin" "root-password=$(rand)"
+seed platform/polaris "root-client-secret=$(rand)" "token-key=$(rand 32)"
 
 echo
 echo "Vault UI: ${BASE_URL}/ui  ->  method Username, user admin, password:"

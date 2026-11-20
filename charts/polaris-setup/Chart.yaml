@@ -1,0 +1,5 @@
+apiVersion: v2
+name: polaris-setup
+description: One-shot setup for Apache Polaris - Silo bucket, realm bootstrap (root principal), default catalog
+type: application
+version: 0.1.0

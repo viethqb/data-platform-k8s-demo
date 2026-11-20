@@ -22,13 +22,13 @@ SCRIPTS="${ROOT_DIR}/scripts"
 
 REVISION="${REVISION:-main}"
 REPO_URL="$(awk '/^repoURL:/ {print $2}' "${ENV_DIR}/platform-apps.yaml")"
-NAMESPACES="argocd ingress-nginx vault external-secrets cnpg-system postgres silo lakekeeper airflow metabase ranger"
+NAMESPACES="argocd ingress-nginx vault external-secrets cnpg-system postgres silo lakekeeper airflow metabase ranger polaris"
 
 helm_install() { # release chart namespace
   local args=() line
   while IFS= read -r line; do args+=("${line}"); done < <(values_args "$1")
   helm --kube-context "${CONTEXT}" upgrade --install "$1" "${ROOT_DIR}/charts/$2" \
-    -n "$3" "${args[@]}" --wait --timeout "${HELM_TIMEOUT:-20m}"
+    -n "$3" ${args[@]+"${args[@]}"} --wait --timeout "${HELM_TIMEOUT:-20m}"
 }
 
 for bin in kind kubectl helm openssl docker; do

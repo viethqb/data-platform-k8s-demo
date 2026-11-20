@@ -1,0 +1,42 @@
+# Apache Polaris (Iceberg REST catalog) with built-in authentication:
+# principals authenticate with client_id/client_secret (OAuth2 client
+# credentials), authorisation is Polaris RBAC. No external IdP needed.
+realmContext:
+  realms:
+    - POLARIS
+
+persistence:
+  type: relational-jdbc
+  relationalJdbc:
+    secret:
+      name: polaris-persistence        # username / password / jdbcUrl (External Secrets)
+
+authentication:
+  tokenBroker:
+    # Shared signing key from Vault, so tokens survive pod restarts.
+    type: symmetric-key
+    secret:
+      name: polaris-token-broker
+      symmetricKey:
+        secretKey: symmetric.key
+
+# Server-side S3 credentials (Silo). Used to read/write table metadata.
+storage:
+  secret:
+    name: polaris-storage
+    awsAccessKeyId: awsAccessKeyId
+    awsSecretAccessKey: awsSecretAccessKey
+
+extraEnv:
+  - name: AWS_REGION
+    value: us-east-1
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    # Polaris serves /api/...; the console and the API share /polaris on the
+    # platform host, so only /polaris/api/* goes to the server.
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /api/$2
+  tls: []

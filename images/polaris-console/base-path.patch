@@ -1,0 +1,93 @@
+diff --git a/console/docker/Dockerfile b/console/docker/Dockerfile
+index 269f226..35cefc8 100644
+--- a/console/docker/Dockerfile
++++ b/console/docker/Dockerfile
+@@ -17,6 +17,8 @@
+ 
+ # Build stage
+ FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:1-1779828907 AS builder
++ARG VITE_BASE_PATH=/
++ENV VITE_BASE_PATH=${VITE_BASE_PATH}
+ 
+ # Default environment variables (can be overridden at runtime)
+ ENV VITE_POLARIS_API_URL=http://polaris:8181
+diff --git a/console/index.html b/console/index.html
+index 06071b0..6297e9f 100644
+--- a/console/index.html
++++ b/console/index.html
+@@ -20,14 +20,14 @@ under the License.
+ <html lang="en">
+   <head>
+     <meta charset="UTF-8" />
+-    <link rel="icon" type="image/svg+xml" href="/apache-polaris-logo.svg" />
++    <link rel="icon" type="image/svg+xml" href="%BASE_URL%apache-polaris-logo.svg" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+     <title>Apache Polaris - Console</title>
+   </head>
+   <body>
+     <div id="root"></div>
+     <!-- Load runtime configuration -->
+-    <script src="/config.js"></script>
++    <script src="%BASE_URL%config.js"></script>
+     <script type="module" src="/src/main.tsx"></script>
+   </body>
+ </html>
+diff --git a/console/src/app.tsx b/console/src/app.tsx
+index dbcc367..52c9613 100644
+--- a/console/src/app.tsx
++++ b/console/src/app.tsx
+@@ -56,7 +56,7 @@ function App() {
+       <QueryClientProvider client={queryClient}>
+         <ThemeProvider>
+           <AuthProvider>
+-            <BrowserRouter>
++            <BrowserRouter basename={import.meta.env.BASE_URL}>
+               <Routes>
+                 <Route path="/login" element={<Login />} />
+                 <Route path="/auth/callback" element={<AuthCallback />} />
+diff --git a/console/src/components/layout/Logo.tsx b/console/src/components/layout/Logo.tsx
+index 68e4674..424efaf 100644
+--- a/console/src/components/layout/Logo.tsx
++++ b/console/src/components/layout/Logo.tsx
+@@ -40,7 +40,7 @@ export function Logo({
+     <>
+       {/* Logo Icon - Star logo */}
+       <img
+-        src="/apache-polaris-logo.svg"
++        src={`${import.meta.env.BASE_URL}apache-polaris-logo.svg`}
+         alt="Logo"
+         className={isCompact ? "h-6 w-6" : "h-8 w-8"}
+       />
+diff --git a/console/src/lib/navigation.ts b/console/src/lib/navigation.ts
+index 156f416..d6b2a9a 100644
+--- a/console/src/lib/navigation.ts
++++ b/console/src/lib/navigation.ts
+@@ -42,11 +42,12 @@ export function navigate(path: string, replace: boolean = false) {
+   if (navigateFunction) {
+     navigateFunction(path)
+   } else {
+-    // Fallback for use outside React context
++    // Fallback for use outside React context; prefix the app base path
++    const url = import.meta.env.BASE_URL.replace(/\/$/, "") + path
+     if (replace) {
+-      window.location.replace(path)
++      window.location.replace(url)
+     } else {
+-      window.location.href = path
++      window.location.href = url
+     }
+   }
+ }
+diff --git a/console/vite.config.ts b/console/vite.config.ts
+index d9782d2..1afb79f 100644
+--- a/console/vite.config.ts
++++ b/console/vite.config.ts
+@@ -23,6 +23,8 @@ import path from "path"
+ 
+ // https://vite.dev/config/
+ export default defineConfig({
++  // Serve the app under a sub-path, e.g. VITE_BASE_PATH=/polaris/
++  base: process.env.VITE_BASE_PATH || "/",
+   plugins: [react()],
+   resolve: {
+     alias: {

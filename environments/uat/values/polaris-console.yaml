@@ -1,0 +1,4 @@
+apiUrl: https://data-uat.127.0.0.1.nip.io/polaris
+ingress:
+  enabled: true
+  host: data-uat.127.0.0.1.nip.io

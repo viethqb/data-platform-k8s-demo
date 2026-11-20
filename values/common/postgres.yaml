@@ -6,3 +6,7 @@ databases:
   - name: airflow
   - name: metabase
   - name: ranger
+  - name: polaris
+    # Polaris creates its tables but not the schema itself.
+    schemas:
+      - polaris_schema

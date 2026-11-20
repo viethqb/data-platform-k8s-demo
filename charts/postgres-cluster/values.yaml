@@ -12,4 +12,5 @@ superuserSecret: pg-superuser
 # basic-auth Secret pg-role-<name>, created outside Git (scripts/bootstrap.sh).
 databases: []
 #  - name: airflow
+#    schemas: [extra_schema]   # optional, owned by the database role
 resources: {}

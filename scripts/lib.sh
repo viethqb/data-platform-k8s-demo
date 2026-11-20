@@ -48,5 +48,5 @@ list_apps() {
 render_app() {
   local args=() line
   while IFS= read -r line; do args+=("${line}"); done < <(values_args "$1")
-  helm template "$4" "${ROOT_DIR}/charts/$2" -n "$3" "${args[@]}"
+  helm template "$4" "${ROOT_DIR}/charts/$2" -n "$3" ${args[@]+"${args[@]}"}
 }

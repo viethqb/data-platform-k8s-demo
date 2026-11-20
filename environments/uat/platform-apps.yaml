@@ -55,6 +55,17 @@ apps:
   metabase:
     wave: 2
     namespace: metabase
+  # Apache Polaris (trial next to Lakekeeper): server, setup job, console
+  polaris:
+    namespace: polaris
+    wave: 1
+    syncOptions: [ServerSideApply=true]
+  polaris-setup:
+    namespace: polaris
+    wave: 2
+  polaris-console:
+    namespace: polaris
+    wave: 2
   ranger:
     wave: 4
     chart: ranger-admin

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Pull-through registry caches for kind (docker.io, quay.io, ghcr.io, registry.k8s.io).
+# Pull-through registry caches for kind (docker.io, quay.io, ghcr.io, registry.k8s.io)
+# plus one plain local registry (localhost:5001) for images built in this repo
+# (scripts/build-images.sh).
 #
 # One registry:3 container per upstream registry runs next to the kind node on
 # the "kind" Docker network, with its storage in a Docker volume. containerd in
@@ -23,6 +25,9 @@ ghcr|ghcr.io|https://ghcr.io
 k8s|registry.k8s.io|https://registry.k8s.io
 "
 
+LOCAL_REGISTRY=kind-registry-local
+LOCAL_PORT=5001
+
 case "${1:-}" in
   --status)
     docker ps -a --filter name=kind-registry- --format '{{.Names}}\t{{.Status}}'
@@ -35,6 +40,9 @@ case "${1:-}" in
       docker volume rm "kind-registry-${name}" >/dev/null 2>&1 || true
       echo "removed kind-registry-${name}"
     done <<<"${MIRRORS}"
+    docker rm -f "${LOCAL_REGISTRY}" >/dev/null 2>&1 || true
+    docker volume rm "${LOCAL_REGISTRY}" >/dev/null 2>&1 || true
+    echo "removed ${LOCAL_REGISTRY}"
     exit 0 ;;
 esac
 
@@ -56,6 +64,16 @@ while IFS='|' read -r name upstream remote; do
   fi
 done <<<"${MIRRORS}"
 
+# Local registry for images built from this repo: push to localhost:5001 from
+# the host, nodes pull it as localhost:5001/... through the kind network.
+if [ "$(docker inspect -f '{{.State.Running}}' "${LOCAL_REGISTRY}" 2>/dev/null)" != "true" ]; then
+  docker rm -f "${LOCAL_REGISTRY}" >/dev/null 2>&1 || true
+  docker run -d --name "${LOCAL_REGISTRY}" --restart=always --network kind \
+    -p "127.0.0.1:${LOCAL_PORT}:5000" -v "${LOCAL_REGISTRY}:/var/lib/registry" \
+    -e OTEL_TRACES_EXPORTER=none "${REGISTRY_IMAGE}" >/dev/null
+  echo "started ${LOCAL_REGISTRY} on localhost:${LOCAL_PORT}"
+fi
+
 # Point containerd in every node at the caches (needs config_path, set in
 # environments/<env>/kind-cluster.yaml). hosts.toml is read on every pull,
 # so no containerd restart is needed.
@@ -69,5 +87,9 @@ server = "${remote}"
   capabilities = ["pull", "resolve"]
 EOF
   done <<<"${MIRRORS}"
+  docker exec -i "${node}" sh -c "mkdir -p /etc/containerd/certs.d/localhost:${LOCAL_PORT} && cat > /etc/containerd/certs.d/localhost:${LOCAL_PORT}/hosts.toml" <<EOF
+[host."http://${LOCAL_REGISTRY}:5000"]
+  capabilities = ["pull", "resolve"]
+EOF
   echo "configured mirrors in ${node}"
 done
