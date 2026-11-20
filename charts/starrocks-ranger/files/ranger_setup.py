@@ -82,7 +82,8 @@ def servicedef_signature(d):
         "configs": names(d.get("configs")),
         "contextEnrichers": names(d.get("contextEnrichers")),
         "rowFilter": names((d.get("rowFilterDef") or {}).get("resources")),
-        "dataMask": names((d.get("dataMaskDef") or {}).get("maskTypes")),
+        "dataMask": sorted((m.get("name"), m.get("transformer") or "")
+                           for m in (d.get("dataMaskDef") or {}).get("maskTypes") or []),
     }
 
 
