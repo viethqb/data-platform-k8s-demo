@@ -40,3 +40,10 @@ ingress:
     nginx.ingress.kubernetes.io/use-regex: "true"
     nginx.ingress.kubernetes.io/rewrite-target: /api/$2
   tls: []
+
+# Quarkus/JVM start takes ~20s, longer while other apps start; the chart's
+# default liveness (5s delay, 3 x 10s) restarted the pod during start-up.
+livenessProbe:
+  initialDelaySeconds: 60
+readinessProbe:
+  initialDelaySeconds: 15

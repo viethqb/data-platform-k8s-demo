@@ -1,11 +1,13 @@
+{{- /*
+A plain Job (not an Argo CD hook): an app that only contains hooks is always
+"Synced", so auto-sync never starts an operation and the hook never runs.
+The name carries a checksum of the values, so a config change creates a new
+Job and Argo CD prunes the old one. Every step is idempotent.
+*/}}
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: polaris-setup
-  annotations:
-    # Re-run on every sync; every step is idempotent.
-    argocd.argoproj.io/hook: Sync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  name: polaris-setup-{{ .Values | toJson | sha256sum | trunc 8 }}
 spec:
   backoffLimit: 10
   template:
