@@ -1,6 +1,6 @@
 # Bước 9: PostgreSQL (CloudNativePG)
 
-Một cluster Postgres dùng chung làm metadata DB cho Lakekeeper, Airflow,
+Một cluster Postgres dùng chung làm metadata DB cho Polaris, Airflow,
 Metabase và Ranger. Mỗi app có database và role riêng, mật khẩu lấy từ Vault.
 
 ## 9.1 Cài operator
@@ -23,10 +23,11 @@ Chart local `charts/postgres-cluster` sinh ra `Cluster` và mỗi app một
 clusterName: pg
 superuserSecret: pg-superuser      # do External Secrets tạo ở bước 8
 databases:
-  - name: lakekeeper
   - name: airflow
   - name: metabase
   - name: ranger
+  - name: polaris
+    schemas: [polaris_schema]     # Polaris tạo bảng nhưng không tạo schema
 ```
 
 Với mỗi `name`, chart tạo một managed role có mật khẩu đọc từ secret
@@ -47,13 +48,13 @@ cluster.postgresql.cnpg.io/pg   1           1       Cluster in healthy state   p
 
 NAME         CLUSTER   PG NAME      APPLIED
 airflow      pg        airflow      true
-lakekeeper   pg        lakekeeper   true
 metabase     pg        metabase     true
+polaris      pg        polaris      true
 ranger       pg        ranger       true
 ```
 
 ```bash
-kubectl -n postgres exec pg-1 -c postgres -- psql -c '\l' | grep -E 'airflow|lakekeeper|metabase|ranger'
+kubectl -n postgres exec pg-1 -c postgres -- psql -c '\l' | grep -E 'airflow|metabase|ranger|polaris'
 ```
 
 Lỗi `failed calling webhook "mcluster.cnpg.io" ... connection refused` khi mới

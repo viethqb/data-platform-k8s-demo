@@ -17,7 +17,7 @@ kubectl -n argocd get applications
 ```
 
 Mọi dòng phải là `Synced  Healthy`: `airflow`, `argocd`, `cloudnative-pg`,
-`external-secrets`, `ingress-nginx`, `lakekeeper`, `metabase`,
+`external-secrets`, `ingress-nginx`, `metabase`, `polaris`, `polaris-console`, `polaris-setup`,
 `platform-secrets`, `postgres`, `ranger`, `silo`, `vault` (cộng `root` nếu có).
 
 ```bash
@@ -25,7 +25,7 @@ kubectl get externalsecret -A          # tất cả SecretSynced / True
 ENV=uat ./scripts/credentials.sh       # URL + tài khoản
 
 B=https://data-uat.127.0.0.1.nip.io
-for p in /argocd/ /ui/ /airflow/ /metabase/ /lakekeeper/ui/ /silo/ /ranger/login.jsp; do
+for p in /argocd/ /ui/ /airflow/ /metabase/ /polaris/ /silo/ /ranger/login.jsp; do
   printf '%-18s ' "$p"; curl -s -o /dev/null -H 'Accept: text/html' -w '%{http_code}\n' "$B$p"
 done
 ```

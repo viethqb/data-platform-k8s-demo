@@ -124,10 +124,9 @@ seed() {
 }
 
 seed platform/postgres/superuser "password=$(rand)"
-for app in lakekeeper airflow metabase ranger polaris; do
+for app in airflow metabase ranger polaris; do
   seed "platform/postgres/${app}" "password=$(rand)"
 done
-seed platform/lakekeeper "encryption-key=$(rand 32)"
 seed platform/airflow \
   "fernet-key=$(openssl rand -base64 32 | tr '+/' '-_')" \
   "api-secret-key=$(rand)" \

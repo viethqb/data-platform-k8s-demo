@@ -64,14 +64,14 @@ Cây secret sau khi seed:
 
 ```text
 secret/platform/postgres/superuser   password
-secret/platform/postgres/lakekeeper  password
 secret/platform/postgres/airflow     password
 secret/platform/postgres/metabase    password
 secret/platform/postgres/ranger      password
-secret/platform/lakekeeper           encryption-key
+secret/platform/postgres/polaris     password
 secret/platform/airflow              fernet-key, api-secret-key, jwt-secret, admin-password
 secret/platform/ranger               admin-password
 secret/platform/silo                 root-user, root-password
+secret/platform/polaris              root-client-secret, token-key
 ```
 
 > **Chỉ dành cho lab**: unseal key và root token được lưu vào Secret

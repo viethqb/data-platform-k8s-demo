@@ -24,7 +24,7 @@ flowchart LR
     nginx -->|"/ui, /v1"| vault[(Vault)]
     nginx -->|/airflow| airflow[Airflow]
     nginx -->|/metabase| metabase[Metabase]
-    nginx -->|/lakekeeper| lakekeeper[Lakekeeper]
+    nginx -->|/polaris| polaris[Polaris]
     nginx -->|/silo| siloc[Silo console]
     nginx -->|/ranger| ranger[Ranger Admin]
 
@@ -32,11 +32,11 @@ flowchart LR
     eso -->|K8s Secrets| apps((apps))
     pg[(PostgreSQL<br/>CloudNativePG)]
     silo[(Silo S3 API<br/>chỉ nội bộ)]
-    lakekeeper --> pg
+    polaris --> pg
     airflow --> pg
     metabase --> pg
     ranger --> pg
-    lakekeeper -. warehouse .-> silo
+    polaris -. warehouse .-> silo
   end
 
   git[(GitHub<br/>charts + values)] -->|sync| argocd
@@ -48,7 +48,7 @@ flowchart LR
 | `/ui`, `/v1` | Vault 2.0 | `charts/vault` | Path cố định của Vault, không trùng app khác |
 | `/airflow/` | Airflow 3.2 | `charts/airflow` | `[api] base_url` |
 | `/metabase/` | Metabase 0.63 | `charts/metabase` (local) | `MB_SITE_URL`, ingress strip prefix |
-| `/lakekeeper/ui/` | Lakekeeper 0.15 | `charts/lakekeeper` | `X-Forwarded-Prefix`, ingress strip prefix |
+| `/polaris/` | Apache Polaris 1.9 (Iceberg REST, đăng nhập + RBAC có sẵn) | `charts/polaris`, `charts/polaris-console` (local) | API `/polaris/api` và console `/polaris/`, ingress strip prefix; console build kèm patch base path |
 | `/silo/` | Silo console | `charts/silo` (local) | `MINIO_BROWSER_REDIRECT_URL`, ingress strip prefix |
 | `/ranger/` | Ranger Admin 2.9 | `charts/ranger-admin` (local) | Tomcat `ranger.contextName` |
 
@@ -59,7 +59,7 @@ cài từng thành phần theo đúng thứ tự phụ thuộc, có checkpoint s
 
 1. Chuẩn bị máy → 2. kind cluster → 3. Cache image (registry mirror) → 4. TLS
    (mkcert) → 5. ingress-nginx → 6. Argo CD → 7. Vault → 8. External Secrets →
-   9. PostgreSQL → 10-14. Silo, Lakekeeper, Airflow, Metabase, Ranger → 15. Kiểm tra
+   9. PostgreSQL → 10-14. Silo, Polaris, Airflow, Metabase, Ranger → 15. Kiểm tra
 
 Hoặc chạy cả tutorial bằng một lệnh:
 

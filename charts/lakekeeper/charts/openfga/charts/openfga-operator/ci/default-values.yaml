@@ -1,4 +1,0 @@
-# Standalone install exercise for chart-testing.
-# kind has the operator image preloaded, so skip the registry pull.
-image:
-  pullPolicy: Never

@@ -76,8 +76,8 @@ Khi bật tất cả bằng root app, `wave` quyết định thứ tự:
 | -2 | vault, external-secrets, cloudnative-pg |
 | -1 | platform-secrets |
 | 0 | postgres |
-| 1 | silo, lakekeeper |
-| 2 | metabase |
+| 1 | silo, polaris |
+| 2 | polaris-setup, polaris-console, metabase |
 | 3 | airflow |
 | 4 | ranger |
 

@@ -10,7 +10,7 @@ kubectl config use-context kind-data-platform-uat
 Tạo luôn các namespace để các bước sau chỉ việc cài:
 
 ```bash
-for ns in argocd ingress-nginx vault external-secrets cnpg-system postgres silo lakekeeper airflow metabase ranger; do
+for ns in argocd ingress-nginx vault external-secrets cnpg-system postgres silo polaris airflow metabase ranger; do
   kubectl create namespace "$ns" --dry-run=client -o yaml | kubectl apply -f -
 done
 ```
@@ -36,7 +36,7 @@ nodes:
 
 ## Vì sao port trong node phải bằng port trên máy
 
-Các app (Airflow, Lakekeeper...) dựng URL redirect từ header `X-Forwarded-Proto`
+Các app (Airflow, Argo CD...) dựng URL redirect từ header `X-Forwarded-Proto`
 và `X-Forwarded-Port` mà nginx gửi vào. nginx điền các header này theo port nó
 đang listen. Nếu map kiểu `8080 trên máy -> 80 trong node`, nginx sẽ gửi
 `X-Forwarded-Port: 80`, và sau khi login Airflow redirect về URL bị mất `:8080`.

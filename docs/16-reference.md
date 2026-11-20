@@ -5,8 +5,9 @@
 ```text
 charts/
   airflow/ argo-cd/ cloudnative-pg/ external-secrets/   chart upstream, vendor sẵn
-  ingress-nginx/ lakekeeper/ vault/                      (pin version, kèm subchart)
+  ingress-nginx/ polaris/ vault/                         (pin version, kèm subchart)
   postgres-cluster/ silo/ metabase/ ranger-admin/        chart local
+  polaris-setup/ polaris-console/                        chart local (Polaris)
   platform-secrets/                                      ClusterSecretStore + ExternalSecret
   platform-apps/                                         app-of-apps cho một môi trường
 values/common/<app>.yaml                                 values dùng chung mọi môi trường
@@ -38,7 +39,7 @@ scripts/
 | `vault` | helm.releases.hashicorp.com | 0.34.1 (Vault 2.0.4) |
 | `external-secrets` | charts.external-secrets.io | 2.15.0 |
 | `cloudnative-pg` | cloudnative-pg.github.io/charts | 0.29.2 |
-| `lakekeeper` | lakekeeper.github.io/lakekeeper-charts | 0.15.0 |
+| `polaris` | git tag `apache-polaris-1.9.0` (`helm/polaris`) | 1.9.0 |
 | `airflow` | airflow.apache.org | 1.22.0 |
 
 Nâng version: sửa trong `scripts/vendor-charts.sh`, rồi chạy:

@@ -12,7 +12,7 @@ Vault, Argo CD quản lý mọi thứ từ Git.
 | `https://data-uat.127.0.0.1.nip.io/ui` | Vault: nơi lưu mọi secret |
 | `https://data-uat.127.0.0.1.nip.io/airflow/` | Airflow 3 |
 | `https://data-uat.127.0.0.1.nip.io/metabase/` | Metabase |
-| `https://data-uat.127.0.0.1.nip.io/lakekeeper/ui/` | Lakekeeper (Iceberg REST catalog) |
+| `https://data-uat.127.0.0.1.nip.io/polaris/` | Apache Polaris (Iceberg REST catalog, có đăng nhập + RBAC) |
 | `https://data-uat.127.0.0.1.nip.io/silo/` | Silo console (object storage, fork của MinIO) |
 | `https://data-uat.127.0.0.1.nip.io/ranger/` | Apache Ranger Admin |
 
@@ -34,11 +34,12 @@ flowchart TB
   F --> I["9. CloudNativePG + Postgres"]
   H --> I
   I --> J["10. Silo"]
-  I --> K["11. Lakekeeper"]
+  I --> K["11. Polaris"]
   I --> L["12. Airflow"]
   I --> M["13. Metabase"]
   I --> N["14. Ranger"]
   H --> J
+  J -->|"bucket warehouse"| K
 ```
 
 | Bước | Cài gì | Phụ thuộc | Lý do phải ở vị trí này |
@@ -51,7 +52,7 @@ flowchart TB
 | 6 | Argo CD | ingress | Từ đây mọi app được cài từ Git |
 | 7 | Vault | Argo CD | Nơi chứa secret; phải init/unseal trước khi app đọc được |
 | 8 | External Secrets | Vault | Đồng bộ secret từ Vault thành K8s Secret cho app |
-| 9 | Postgres | secrets | Metadata DB của Lakekeeper, Airflow, Metabase, Ranger |
+| 9 | Postgres | secrets | Metadata DB của Polaris, Airflow, Metabase, Ranger |
 | 10-14 | Các app | Postgres, secrets | Cài theo thứ tự nào cũng được |
 
 ## Hai cách làm
@@ -80,8 +81,7 @@ Thời gian dựng toàn bộ UAT khoảng 20-25 phút (đo trên Docker Desktop
 | 8 | [External Secrets: Vault → Kubernetes](08-external-secrets.md) |
 | 9 | [PostgreSQL (CloudNativePG)](09-postgres.md) |
 | 10 | [Silo](10-silo.md) |
-| 11 | [Lakekeeper](11-lakekeeper.md) |
-| 11b | [Polaris (thử nghiệm, chạy song song)](11b-polaris.md) |
+| 11 | [Apache Polaris](11-polaris.md) |
 | 12 | [Airflow](12-airflow.md) |
 | 13 | [Metabase](13-metabase.md) |
 | 14 | [Ranger](14-ranger.md) |

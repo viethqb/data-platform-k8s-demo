@@ -42,7 +42,7 @@ chia làm ba nhóm:
 | Nhóm | App | Cách làm |
 |---|---|---|
 | App tự hiểu prefix | Argo CD, Airflow, Ranger | Cấu hình app phục vụ ở `/argocd`, `/airflow`, `/ranger`; Ingress `pathType: Prefix`, không strip |
-| App chạy ở `/` | Metabase, Silo console, Lakekeeper | Ingress dùng regex + `rewrite-target: /$2` để strip prefix; app được báo URL public để dựng link đúng |
+| App chạy ở `/` | Metabase, Silo console, Polaris (server + console) | Ingress dùng regex + `rewrite-target: /$2` để strip prefix; app được báo URL public để dựng link đúng |
 | App có path cố định | Vault | UI ở `/ui`, API ở `/v1`; hai path này không trùng app nào, nên route thẳng |
 
 Ví dụ Ingress strip prefix:

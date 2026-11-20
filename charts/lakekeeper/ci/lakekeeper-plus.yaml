@@ -1,4 +1,0 @@
-helmWait: true
-lakekeeper:
-  edition: "plus"
-  useLicenseSecret: false

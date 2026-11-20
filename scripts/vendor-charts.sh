@@ -8,15 +8,15 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# name|repo|version
+# name|repo|version     (repo "git:<url>#<tag>:<path>" = chart taken from a Git tag)
 CHARTS="
 ingress-nginx|https://kubernetes.github.io/ingress-nginx|4.15.1
 argo-cd|https://argoproj.github.io/argo-helm|10.18.2
 cloudnative-pg|https://cloudnative-pg.github.io/charts|0.29.2
-lakekeeper|https://lakekeeper.github.io/lakekeeper-charts/|0.15.0
 airflow|https://airflow.apache.org|1.22.0
 vault|https://helm.releases.hashicorp.com|0.34.1
 external-secrets|https://charts.external-secrets.io|2.15.0
+polaris|git:https://github.com/apache/polaris.git#apache-polaris-1.9.0:helm/polaris|1.9.0
 "
 
 ONLY="${1:-}"
@@ -27,7 +27,16 @@ while IFS='|' read -r name repo version; do
   [ -n "${name}" ] || continue
   [ -z "${ONLY}" ] || [ "${ONLY}" = "${name}" ] || continue
   echo "==> ${name} ${version}"
-  helm pull "${name}" --repo "${repo}" --version "${version}" --untar -d "${tmp}"
+  if [ "${repo#git:}" != "${repo}" ]; then
+    # Chart published only as source (e.g. Apache Polaris): sparse-clone the tag.
+    spec="${repo#git:}"; url="${spec%%#*}"; rest="${spec#*#}"; tag="${rest%%:*}"; path="${rest#*:}"
+    git -c advice.detachedHead=false clone -q --depth 1 --branch "${tag}" --filter=blob:none --sparse "${url}" "${tmp}/src" 2>/dev/null
+    git -C "${tmp}/src" sparse-checkout set "${path}"
+    rm -rf "${tmp}/src/${path}/tests" "${tmp}/src/${path}/ci"
+    mv "${tmp}/src/${path}" "${tmp}/${name}"
+  else
+    helm pull "${name}" --repo "${repo}" --version "${version}" --untar -d "${tmp}"
+  fi
   rm -rf "${ROOT_DIR}/charts/${name}"
   mv "${tmp}/${name}" "${ROOT_DIR}/charts/${name}"
 done <<<"${CHARTS}"
