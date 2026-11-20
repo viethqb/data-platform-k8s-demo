@@ -125,19 +125,24 @@ flowchart LR
 ### Phía Ranger: `charts/starrocks-ranger`
 
 Ranger 2.9 **chưa có sẵn** service definition `starrocks`. Job
-`starrocks-ranger` dùng file `servicedef-starrocks.json` (lấy từ bộ test của
-[egret-starrocks](https://github.com/egret-data/egret-starrocks)) và làm, idempotent:
+`starrocks-ranger` dùng file chính thức `ranger-servicedef-starrocks.json`
+(repo StarRocks, tag `4.1.7`, `conf/ranger/`) và làm, idempotent:
 
 1. Đăng ký service definition `starrocks` (resource `catalog` → `database` →
    `table` → `column`, cùng `view`, `materialized_view`, `function`, `system`,
-   `user`...; có row filter và data mask).
-2. Tạo service `starrocks`, là tên mà plugin trong FE dùng.
-3. Tạo user trong Ranger (`root`, `analyst`).
+   `user`...; có row filter và data mask). Đặt `implClass` cho lookup. Nếu
+   definition đã có mà khác (so sánh không phụ thuộc thứ tự) thì cập nhật bằng
+   `PUT`, đúng như tài liệu StarRocks yêu cầu.
+2. Tạo hoặc cập nhật service `starrocks` (plugin trong FE đọc theo tên này),
+   kết nối lookup bằng user `ranger_lookup`.
+3. Tạo user trong Ranger (`root`, `analyst`, `ranger_lookup`).
 4. Với superuser (`root`): mỗi nhánh resource một policy, gồm mọi quyền hợp lệ
    cho nhánh đó. Khi tạo service, Ranger tự sinh các policy mặc định trên `*`
    (`all - catalog`, ...) và không cho tạo policy trùng resource, nên Job
-   **thay thế** các policy mặc định đó.
+   **thay thế** các policy mặc định đó (chỉ những policy tên `all - ...`).
+   Policy tự quản lý khác mà trùng resource thì Job dừng với lỗi, không ghi đè.
 5. Policy khai báo trong `values/common/starrocks-ranger.yaml`.
+6. Chạy *Test Connection* và in kết quả.
 
 Policy demo:
 
@@ -164,6 +169,39 @@ Thêm hoặc sửa policy: sửa file này rồi push. Job có tên theo checksu
 chạy lại và cập nhật policy. Cũng có thể sửa trực tiếp trên Ranger UI
 (<https://data-uat.127.0.0.1.nip.io/ranger/> → service **starrocks**), nhưng
 khi Job chạy lại, các policy cùng tên sẽ bị ghi đè bằng giá trị trong Git.
+
+### Lookup trên Ranger UI (autocomplete, Test Connection)
+
+Đây là bước "Optional: install ranger-starrocks-plugin" trong
+[tài liệu StarRocks](https://docs.starrocks.io/docs/administration/user_privs/authorization/ranger_plugin/#optional-install-ranger-starrocks-plugin).
+Lab đưa nó vào một **image Ranger riêng**, `images/ranger-admin`:
+
+```dockerfile
+FROM docker.io/apache/ranger:2.9.0
+COPY --chown=ranger:ranger ranger-starrocks-plugin.jar mysql-connector-j.jar \
+     /opt/ranger/admin/ews/webapp/WEB-INF/classes/ranger-plugins/starrocks/
+```
+
+| Jar | Nguồn (pin trong `images/ranger-admin/image.env`, kiểm tra sha256) |
+|---|---|
+| `ranger-starrocks-plugin-3.0.0-SNAPSHOT.jar` | `releases.starrocks.io/resources/` (link "Ranger plugin" trên trang download community), bytecode Java 8 |
+| `mysql-connector-j-9.3.0.jar` | Maven Central |
+
+`scripts/build-images.sh` tải jar, kiểm tra checksum, build rồi push
+`localhost:5001/ranger-admin:2.9.0-starrocks.1`; `values/common/ranger.yaml`
+trỏ chart Ranger vào image này. Bootstrap tự build nếu registry local chưa có.
+
+Service `starrocks` kết nối StarRocks bằng user `ranger_lookup` (mật khẩu ở
+Vault `secret/platform/starrocks` → `ranger-lookup-password`, do
+`starrocks-setup` tạo). StarRocks chỉ liệt kê những object mà user có quyền,
+và không có quyền nào chỉ cho xem metadata, nên user này được **đọc**
+(`usage` trên catalog, `select` trên cột) nhưng không được ghi. Quyền đó là
+một policy item nằm **trong** policy superuser của hai nhánh tương ứng, vì
+Ranger chỉ cho một policy trên mỗi bộ resource.
+
+Kết quả: *Test Connection* báo `Connection test successful`, và khi tạo policy,
+các ô **StarRocks Catalog / Database / Table / Column** gợi ý tên lấy thẳng từ
+StarRocks (`lakehouse` → `sales` → `orders` → `id`, `city`, `amount`, ...).
 
 ### Phía StarRocks
 
