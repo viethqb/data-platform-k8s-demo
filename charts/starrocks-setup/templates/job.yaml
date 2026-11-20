@@ -1,0 +1,38 @@
+{{- /*
+Plain Job (not an Argo CD hook, see charts/polaris-setup for why). The name
+carries a checksum of the script and values, so any change runs it again;
+every step is idempotent.
+*/}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: starrocks-setup-{{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum | trunc 8 }}
+spec:
+  backoffLimit: 20
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: setup
+          image: {{ .Values.image }}
+          env:
+            - name: ROOT_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ .Values.secret }}, key: root-password } }
+            - name: POLARIS_CREDENTIAL
+              valueFrom: { secretKeyRef: { name: {{ .Values.secret }}, key: polaris-credential } }
+            - name: S3_ACCESS_KEY
+              valueFrom: { secretKeyRef: { name: {{ .Values.secret }}, key: s3-access-key } }
+            - name: S3_SECRET_KEY
+              valueFrom: { secretKeyRef: { name: {{ .Values.secret }}, key: s3-secret-key } }
+            {{- range $i, $u := .Values.users }}
+            - name: USER_PASSWORD_{{ $i }}
+              valueFrom: { secretKeyRef: { name: {{ $.Values.secret }}, key: {{ $u.passwordKey }} } }
+            {{- end }}
+          command: ["bash", "/setup/setup.sh"]
+          volumeMounts:
+            - name: setup
+              mountPath: /setup
+      volumes:
+        - name: setup
+          configMap:
+            name: starrocks-setup

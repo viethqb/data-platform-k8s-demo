@@ -37,6 +37,22 @@ Ranger dùng Tomcat nhúng với context path `ranger.contextName`, nên tự ph
 tuyệt đối `/images/<hash>.svg|png`, nên chart tạo thêm một Ingress chỉ bắt đúng
 các file này và rewrite về `/ranger/images/` (`ingress.rewriteRootImages: true`).
 
+## Image
+
+Chart dùng `localhost:5001/ranger-admin:2.9.0-starrocks.1`: image chính thức
+`apache/ranger:2.9.0` cộng plugin lookup của StarRocks (`images/ranger-admin`,
+xem [bước 15](15-starrocks.md#lookup-trên-ranger-ui-autocomplete-test-connection)).
+Đổi lại image chính thức: bỏ khối `image:` trong `values/common/ranger.yaml`
+và tắt `lookup` trong `values/common/starrocks-ranger.yaml`.
+
+## Plugin và cấu hình thêm cho `ranger-admin-site.xml`
+
+`values.siteProperties` của chart được entrypoint ghi vào `ranger-admin-site.xml`
+(cùng chỗ với `ranger.contextName`). UAT bật
+`ranger.admin.allow.unauthenticated.download.access` để plugin StarRocks tải
+policy mà không cần Kerberos; chi tiết ở
+[bước 15](15-starrocks.md#plugin-tải-policy-không-cần-kerberos).
+
 ## Lỗi đã gặp
 
 | Triệu chứng | Nguyên nhân | Cách xử lý |
@@ -56,4 +72,4 @@ curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' https://data-uat.127.0.
 # 302 https://data-uat.127.0.0.1.nip.io/ranger/login.jsp
 ```
 
-Tiếp theo: [15. Kiểm tra cuối](15-verify-troubleshoot.md)
+Tiếp theo: [15. StarRocks](15-starrocks.md)

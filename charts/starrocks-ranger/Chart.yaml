@@ -1,0 +1,5 @@
+apiVersion: v2
+name: starrocks-ranger
+description: Connect StarRocks to Apache Ranger - service definition, service, users and policies in Ranger Admin, plus the FE plugin config
+type: application
+version: 0.1.0

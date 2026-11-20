@@ -4,3 +4,19 @@ database:
   name: ranger
   user: ranger
 secretName: ranger-secrets
+
+siteProperties:
+  # Plugins (StarRocks FE) download policies, roles and tags without Kerberos,
+  # which Ranger refuses by default ("Unauthenticated access not allowed").
+  # This opens only the download endpoints (/service/plugins/policies/download,
+  # /service/roles/download, /service/tags/download), not the rest of the API.
+  # The default site sets it to false explicitly, so the broader
+  # ranger.admin.allow.unauthenticated.access does not cover it.
+  # Lab only: use Kerberos for plugins in production.
+  ranger.admin.allow.unauthenticated.download.access: "true"
+
+# Official image + the StarRocks lookup plugin (images/ranger-admin, built by
+# scripts/build-images.sh into the local registry).
+image:
+  repository: localhost:5001/ranger-admin
+  tag: 2.9.0-starrocks.1

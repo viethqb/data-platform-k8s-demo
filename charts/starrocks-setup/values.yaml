@@ -1,0 +1,29 @@
+image: docker.io/library/mysql:8.4     # mysql client
+
+fe:
+  host: starrocks-fe-service.starrocks.svc
+  port: 9030
+
+# Secret (External Secrets) with: root-password, polaris-credential
+# (<client_id>:<client_secret>), s3-access-key, s3-secret-key
+secret: starrocks-setup
+
+# StarRocks users to create; passwords are keys of the secret above.
+# Their privileges live in Ranger (charts/starrocks-ranger), not in GRANTs.
+users: []
+#  - name: analyst
+#    passwordKey: analyst-password
+
+# Demo table lakehouse.sales.orders with a few rows (only filled when empty)
+demo:
+  enabled: false
+
+# External catalog on Polaris (charts/polaris-setup creates the "lakehouse" warehouse)
+icebergCatalog:
+  name: lakehouse
+  uri: http://polaris.polaris.svc:8181/api/catalog
+  warehouse: lakehouse
+  scope: PRINCIPAL_ROLE:ALL
+  s3:
+    endpoint: http://silo.silo.svc:9000
+    region: us-east-1

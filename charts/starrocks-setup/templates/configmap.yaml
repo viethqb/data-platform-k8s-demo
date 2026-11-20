@@ -1,0 +1,97 @@
+{{- $c := .Values.icebergCatalog }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: starrocks-setup
+data:
+  # Catalog definition; its checksum goes into the catalog COMMENT so the job
+  # recreates the catalog when the definition changes (a catalog is only a
+  # pointer to Polaris, no data is touched).
+  catalog.sql: |
+    CREATE EXTERNAL CATALOG {{ $c.name }}
+    COMMENT '__COMMENT__'
+    PROPERTIES (
+      'type' = 'iceberg',
+      'iceberg.catalog.type' = 'rest',
+      'iceberg.catalog.uri' = '{{ $c.uri }}',
+      'iceberg.catalog.warehouse' = '{{ $c.warehouse }}',
+      'iceberg.catalog.security' = 'oauth2',
+      'iceberg.catalog.oauth2.credential' = '${POLARIS_CREDENTIAL}',
+      'iceberg.catalog.oauth2.scope' = '{{ $c.scope }}',
+      -- Polaris runs with stsUnavailable: StarRocks uses its own S3 keys
+      -- instead of asking the catalog for vended credentials.
+      'iceberg.catalog.vended-credentials-enabled' = 'false',
+      'aws.s3.endpoint' = '{{ $c.s3.endpoint }}',
+      'aws.s3.region' = '{{ $c.s3.region }}',
+      'aws.s3.enable_path_style_access' = 'true',
+      'aws.s3.access_key' = '${S3_ACCESS_KEY}',
+      'aws.s3.secret_key' = '${S3_SECRET_KEY}'
+    )
+  setup.sh: |
+    set -euo pipefail
+    sr() { mysql -h {{ .Values.fe.host }} -P {{ .Values.fe.port }} -u root "$@"; }
+    # The first queries after an FE restart can time out in the planner (cold
+    # Iceberg metadata): retry, and fail the job if it still does not work.
+    retry() {
+      local out n
+      for n in 1 2 3 4 5 6 7 8 9 10; do
+        if out=$("$@" 2>&1); then printf '%s\n' "$out"; return 0; fi
+        echo "attempt $n failed: $out" >&2; sleep 10
+      done
+      return 1
+    }
+    until sr --password="$ROOT_PASSWORD" -e 'SELECT 1' >/dev/null 2>&1 \
+       || sr --skip-password -e 'SELECT 1' >/dev/null 2>&1; do
+      echo "waiting for StarRocks FE"; sleep 10
+    done
+
+    # 1. root password (a new cluster starts with an empty one)
+    if sr --skip-password -e 'SELECT 1' >/dev/null 2>&1; then
+      sr --skip-password -e "SET PASSWORD FOR 'root' = PASSWORD('${ROOT_PASSWORD}')"
+      echo "root password set"
+    else
+      echo "root password already set"
+    fi
+    export MYSQL_PWD="$ROOT_PASSWORD"
+
+    # 2. wait until a BE is alive, so queries can run
+    until sr -N -e 'SHOW BACKENDS' | grep -q 'true'; do
+      echo "waiting for a live BE"; sleep 10
+    done
+
+    # 3. Iceberg catalog on Polaris; recreated when its definition changes
+    sum=$(md5sum /setup/catalog.sql | cut -c1-12)
+    comment="Iceberg tables in Apache Polaris (managed by starrocks-setup, ${sum})"
+    current=$(sr -N -e "SHOW CATALOGS" | awk -F'\t' '$1=="{{ $c.name }}" {print $3}')
+    if [ "$current" = "$comment" ]; then
+      echo "catalog {{ $c.name }} up to date"
+    else
+      [ -n "$current" ] && sr -e "DROP CATALOG {{ $c.name }}" && echo "dropped outdated catalog {{ $c.name }}"
+      sed -e "s|__COMMENT__|${comment}|" \
+          -e "s|\${POLARIS_CREDENTIAL}|${POLARIS_CREDENTIAL}|" \
+          -e "s|\${S3_ACCESS_KEY}|${S3_ACCESS_KEY}|" \
+          -e "s|\${S3_SECRET_KEY}|${S3_SECRET_KEY}|" \
+          /setup/catalog.sql | sr
+      echo "created catalog {{ $c.name }}"
+    fi
+    # 4. users (privileges come from Ranger)
+    {{- range $i, $u := .Values.users }}
+    sr -e "CREATE USER IF NOT EXISTS '{{ $u.name }}'@'%' IDENTIFIED BY '${USER_PASSWORD_{{ $i }}}'"
+    echo "user {{ $u.name }} ready"
+    {{- end }}
+
+    {{- if .Values.demo.enabled }}
+    # 5. demo data
+    retry sr -e "CREATE DATABASE IF NOT EXISTS {{ $c.name }}.sales"
+    retry sr -e "CREATE TABLE IF NOT EXISTS {{ $c.name }}.sales.orders (id BIGINT, city STRING, amount DOUBLE)"
+    rows=$(retry sr -N -e 'SELECT COUNT(*) FROM {{ $c.name }}.sales.orders' | grep -vi warning | tail -1)
+    if [ "$rows" = "0" ]; then
+      retry sr -e "INSERT INTO {{ $c.name }}.sales.orders VALUES (1,'Hanoi',120.5),(2,'Saigon',99.0),(3,'Danang',45.25),(4,'Hanoi',30.0)"
+      echo "demo rows inserted"
+    else
+      echo "demo table has $rows rows"
+    fi
+    {{- end }}
+
+    sr -e "SHOW DATABASES FROM {{ $c.name }}"
+    echo "starrocks setup done"

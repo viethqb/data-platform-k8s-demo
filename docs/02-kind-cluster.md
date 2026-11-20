@@ -10,7 +10,7 @@ kubectl config use-context kind-data-platform-uat
 Tạo luôn các namespace để các bước sau chỉ việc cài:
 
 ```bash
-for ns in argocd ingress-nginx vault external-secrets cnpg-system postgres silo polaris airflow metabase ranger; do
+for ns in argocd ingress-nginx vault external-secrets cnpg-system postgres silo polaris airflow metabase ranger starrocks; do
   kubectl create namespace "$ns" --dry-run=client -o yaml | kubectl apply -f -
 done
 ```
@@ -31,6 +31,9 @@ nodes:
         listenAddress: "127.0.0.1"
       - containerPort: 443
         hostPort: 443
+        listenAddress: "127.0.0.1"
+      - containerPort: 9030        # StarRocks MySQL protocol (bước 15)
+        hostPort: 19030            # 19030 để không đụng StarRocks local ở 9030
         listenAddress: "127.0.0.1"
 ```
 

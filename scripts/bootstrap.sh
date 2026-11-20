@@ -22,7 +22,7 @@ SCRIPTS="${ROOT_DIR}/scripts"
 
 REVISION="${REVISION:-main}"
 REPO_URL="$(awk '/^repoURL:/ {print $2}' "${ENV_DIR}/platform-apps.yaml")"
-NAMESPACES="argocd ingress-nginx vault external-secrets cnpg-system postgres silo polaris airflow metabase ranger"
+NAMESPACES="argocd ingress-nginx vault external-secrets cnpg-system postgres silo polaris airflow metabase ranger starrocks"
 
 helm_install() { # release chart namespace
   local args=() line

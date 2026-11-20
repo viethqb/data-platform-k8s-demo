@@ -92,6 +92,7 @@ Airflow).
 |---|---|---|
 | `postgres` | `pg-superuser`, `pg-role-<app>` | `platform/postgres/*` |
 | `polaris` | `polaris-persistence`, `polaris-token-broker`, `polaris-storage`, `polaris-root` | `platform/postgres/polaris`, `platform/polaris`, `platform/silo` |
+| `starrocks` | `starrocks-root`, `starrocks-setup`, `starrocks-ranger` | `platform/starrocks`, `platform/polaris`, `platform/silo`, `platform/ranger` |
 | `airflow` | `airflow-metadata`, `airflow-fernet-key`, `airflow-api-secret-key`, `airflow-jwt-secret`, `airflow-admin` | `platform/postgres/airflow`, `platform/airflow` |
 | `metabase` | `metabase-db` | `platform/postgres/metabase` |
 | `ranger` | `ranger-secrets` | `platform/postgres/ranger`, `platform/ranger` |

@@ -73,13 +73,16 @@ Khi bật tất cả bằng root app, `wave` quyết định thứ tự:
 | Wave | App |
 |---|---|
 | -3 | ingress-nginx, argocd |
-| -2 | vault, external-secrets, cloudnative-pg |
+| -2 | vault, external-secrets, cloudnative-pg, starrocks-operator |
 | -1 | platform-secrets |
 | 0 | postgres |
 | 1 | silo, polaris |
 | 2 | polaris-setup, polaris-console, metabase |
 | 3 | airflow |
 | 4 | ranger |
+| 5 | starrocks-ranger |
+| 6 | starrocks |
+| 7 | starrocks-setup |
 
 Mặc định Argo CD **không** đợi Application con Healthy mới sang wave sau, vì
 nó không đánh giá health của kiểu `Application`. Khi image có sẵn trong cache, mọi app

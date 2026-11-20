@@ -1,0 +1,28 @@
+{{- /* Plain Job named after the checksum of its inputs (see charts/polaris-setup). */}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: starrocks-ranger-{{ include (print $.Template.BasePath "/setup-configmap.yaml") . | sha256sum | trunc 8 }}
+spec:
+  backoffLimit: 20
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: setup
+          image: {{ .Values.image }}
+          env:
+            - name: RANGER_ADMIN_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ .Values.secret }}, key: ranger-admin-password } }
+            {{- if .Values.lookup.enabled }}
+            - name: RANGER_LOOKUP_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ .Values.secret }}, key: ranger-lookup-password } }
+            {{- end }}
+          command: ["python3", "-u", "/setup/ranger_setup.py", "/setup/config.json", "/setup/servicedef-starrocks.json"]
+          volumeMounts:
+            - name: setup
+              mountPath: /setup
+      volumes:
+        - name: setup
+          configMap:
+            name: starrocks-ranger-setup

@@ -1,0 +1,7 @@
+# StarRocks Kubernetes operator (manages the StarRocksCluster CR).
+starrocksOperator:
+  watchNamespace: starrocks
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
