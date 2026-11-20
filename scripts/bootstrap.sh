@@ -45,8 +45,9 @@ else
 fi
 
 if [ "${REGISTRY_CACHE:-1}" != "0" ]; then
-  log "2. registry cache"
+  log "2. registry cache + locally built images"
   "${SCRIPTS}/registry-cache.sh"
+  "${SCRIPTS}/build-images.sh"      # no-op when the image is already in localhost:5001
 fi
 if [ "${PRELOAD_IMAGES:-0}" = "1" ]; then
   log "2b. preload images (kind load)"
