@@ -32,6 +32,7 @@ scripts/
   build-images.sh        build images/<tên>/ (Polaris Console, Ranger + StarRocks lookup) -> localhost:5001
   render.sh              render offline giống Argo CD
   vendor-charts.sh       cập nhật chart upstream
+  test-ranger-starrocks.py  test end-to-end phân quyền StarRocks qua Ranger (47 check)
   credentials.sh         in URL + tài khoản
   destroy.sh             xoá cluster
 ```

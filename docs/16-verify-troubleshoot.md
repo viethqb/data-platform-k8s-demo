@@ -30,6 +30,12 @@ for p in /argocd/ /ui/ /airflow/ /metabase/ /polaris/ /silo/ /ranger/login.jsp; 
 done
 ```
 
+Phân quyền StarRocks qua Ranger: chạy bộ test đầy đủ (mục 15.4), kết quả phải là `47/47`:
+
+```bash
+ENV=uat ./scripts/test-ranger-starrocks.py
+```
+
 Tất cả phải trả `200`. StarRocks kiểm tra bằng SQL:
 
 ```bash

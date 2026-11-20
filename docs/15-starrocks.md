@@ -267,6 +267,41 @@ analyst → CREATE TABLE lakehouse.sales.hack (id BIGINT)
 ERROR 5204: Access denied; you need ... CREATE TABLE ... on DATABASE sales
 ```
 
+## 15.4 Test toàn bộ tính năng Ranger × StarRocks
+
+```bash
+ENV=uat ./scripts/test-ranger-starrocks.py          # khoảng 2-3 phút
+ENV=uat ./scripts/test-ranger-starrocks.py --keep   # giữ lại user/bảng/policy để xem trên Ranger UI
+```
+
+Script chỉ dùng thư viện chuẩn của Python. Nó tạo user, bảng và policy riêng
+(tiền tố `t_`/`t-`), tag (`T_PII`, `T_SECRET`) và role `t_readers`, chờ tới khi
+plugin trong FE tải đúng `policyVersion`/`tagVersion` hiện tại, chạy các check,
+rồi dọn sạch.
+
+| Nhóm | Check |
+|---|---|
+| Access | quyền theo bảng; theo cột (chỉ `id`, `name`); qua **Ranger role**; **deny** một cột; **allow exception**; `INSERT`; `CREATE`/`DROP TABLE` theo wildcard tên bảng; bảng Iceberg; **validity schedule** đã hết hạn; điều kiện **ip-range** |
+| Row filter | bảng nội bộ và Iceberg, aggregate vẫn bị lọc, `root` không bị lọc |
+| Mask | đủ 6 kiểu: `MASK`, `MASK_HASH`, `MASK_NULL`, `MASK_NONE`, `MASK_DATE_SHOW_YEAR`, `CUSTOM` (`concat(left({col},1),'***')`); mask trên Iceberg; aggregate trên cột bị mask |
+| Tag | tag `T_PII` → `MASK_NULL`, tag `T_SECRET` → deny, cột không gắn tag vẫn hiện bình thường |
+| Impersonation | `EXECUTE AS ... WITH NO REVERT` nhận đúng mask/filter của user bị mạo danh; user không có quyền `impersonate` bị từ chối |
+| Bản vá egret | `0001` metadata table, `0002` `PREPARE`/`EXECUTE`, `0003` cột ẩn `_file`/`_pos`, `0004` HTTP SQL API (cổng 8030), `0005` `SHOW CREATE CATALOG`, `0006` `FILES()`, `0007` materialized view, `0008` `EXPLAIN COSTS`, `0009` `INTO OUTFILE` |
+| Thay đổi trực tiếp | xoá một policy, quyền mất sau khoảng 6-10 giây (chu kỳ poll 10 giây) |
+
+Kết quả trên UAT: **47/47 pass**, chạy lại lần hai vẫn 47/47.
+
+### Phát hiện khi test
+
+| Vấn đề | Chi tiết | Xử lý |
+|---|---|---|
+| Bug trong service definition chính thức | Transformer của `MASK_HASH` ghi `{COL}` viết hoa, Ranger chỉ thay `{col}`. Chuỗi `{COL}` lọt vào SQL, và **mọi** query vào bảng có mask đó đều lỗi cú pháp (StarRocks viết lại cả bảng khi áp mask) | Bản trong `charts/starrocks-ranger/files/` đã đổi thành `{col}`; Job so sánh cả transformer nên tự `PUT` bản đã sửa |
+| `MASK_HASH` mã hoá hai lần | Transformer là `hex(sha2(col, 256))`, mà `sha2` đã trả về hex, nên kết quả là hex của chuỗi hex (128 ký tự). Vẫn là mask một chiều, ổn định | Giữ như upstream, test kiểm tra đúng giá trị này |
+| `ip-range` không dùng được | StarRocks 4.1.7 gửi `user.getHost()` (phần host của tài khoản, ví dụ `%`) làm client IP thay vì IP thật, nên điều kiện không bao giờ khớp | Giới hạn của StarRocks; test ghi nhận hành vi này. Muốn giới hạn theo IP thì dùng host của tài khoản (`'user'@'10.%'`) |
+| Plugin không tải được policy | Ranger từ chối download không xác thực | `ranger.admin.allow.unauthenticated.download.access` (mục 15.3) |
+| Group của Ranger | StarRocks không có group, và lab không chạy usersync | Dùng **Ranger role** (đã test) |
+| Audit | Đang tắt (lab không có Solr/OpenSearch) | Không test |
+
 ## Checkpoint
 
 ```bash

@@ -16,6 +16,7 @@ Needs: python3, kubectl, the UAT cluster with Ranger + StarRocks running.
 """
 import argparse
 import base64
+import hashlib
 import json
 import os
 import re
@@ -446,7 +447,14 @@ def run_checks(ranger):
         name, email, ssn, salary, region, birth = vals
         check("mask CUSTOM: name -> concat(left(name,1),'***')", name == "A***", name)
         check("mask MASK: email letters -> x, digits -> 0", email == "xxxxx@xxxxxxx.xxx", email)
-        check("mask MASK_HASH: ssn -> sha256 hex", re.fullmatch(r"[0-9A-Fa-f]{64}", ssn) is not None, ssn)
+        # The official transformer is hex(sha2(col, 256)); sha2 already returns hex,
+        # so the value is the hex encoding of the sha256 hex digest (128 chars).
+        want = hashlib.sha256(b"123-45-6789").hexdigest()
+        try:
+            decoded = bytes.fromhex(ssn).decode()
+        except ValueError:
+            decoded = ""
+        check("mask MASK_HASH: ssn -> hex(sha256 hex digest)", decoded.lower() == want, ssn)
         check("mask MASK_NULL: salary -> NULL", salary == "NULL", salary)
         check("mask MASK_NONE: region unchanged", region == "us", region)
         check("mask MASK_DATE_SHOW_YEAR: birth_date -> 1990-01-01", birth.startswith("1990-01-01"), birth)
@@ -479,8 +487,9 @@ def run_checks(ranger):
     check("0003 SELECT * under a policy has no _file/_pos", not err and rows and len(rows[0]) == 4,
           err or f"{len(rows[0]) if rows else 0} columns: {rows[:1]}")
     out = http_sql("t_bob", "t_demo", "SELECT email FROM customers")
+    data = [json.loads(l)["data"][0] for l in out.splitlines() if l.startswith('{"data"')]
     check("0004 HTTP SQL API applies mask + filter",
-          "xxxxx@xxxxxxx.xxx" in out and "alice@example.com" not in out and out.count("xxxx") == 2, out[:300])
+          len(data) == 2 and all(re.fullmatch(r"x+@x+\.x+", d) for d in data), out[:300])
     expect_error("0005 SHOW CREATE CATALOG needs a catalog privilege", "t_eve", "SHOW CREATE CATALOG lakehouse", 5204)
     expect_error("0006 FILES() needs OPERATE on SYSTEM", "t_bob",
                  "SELECT * FROM FILES('path' = 's3://warehouse/', 'format' = 'parquet', "
@@ -491,7 +500,7 @@ def run_checks(ranger):
     expect_rows("0008 plain EXPLAIN still allowed", "t_bob", f"EXPLAIN SELECT * FROM {C}", lambda r: len(r) > 0,
                 show=lambda r: f"{len(r)} lines")
     expect_error("0009 INTO OUTFILE with cluster identity refused", "t_bob",
-                 f"SELECT * FROM {C} INTO OUTFILE 's3://warehouse/t_out/' FORMAT AS CSV "
+                 f"SELECT id, region FROM {C} INTO OUTFILE 's3://warehouse/t_out/' FORMAT AS CSV "
                  "PROPERTIES ('aws.s3.endpoint' = 'http://silo.silo.svc:9000')", 5214)
 
     print("\n== Live policy change")
@@ -510,6 +519,8 @@ def main():
     FILTER = args.filter
 
     print(f"context {CONTEXT}")
+    # A pod left by a previous run may still be terminating: remove it first.
+    kubectl("-n", SR_NS, "delete", "pod", CLIENT, "--ignore-not-found", "--wait=true", check=False)
     kubectl("-n", SR_NS, "run", CLIENT, "--image=docker.io/library/mysql:8.4", "--restart=Never",
             "--command", "--", "sleep", "3600", check=False)
     kubectl("-n", SR_NS, "wait", "--for=condition=Ready", f"pod/{CLIENT}", "--timeout=180s")
