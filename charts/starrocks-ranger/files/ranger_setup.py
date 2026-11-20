@@ -59,35 +59,90 @@ def wait_for_ranger():
     raise SystemExit("Ranger Admin did not answer")
 
 
+LOOKUP = CONFIG.get("lookup") or {}
+SERVER_FIELDS = ("id", "guid", "createdBy", "updatedBy", "createTime", "updateTime", "version")
+
+
+def desired_servicedef():
+    body = {k: v for k, v in SERVICEDEF.items() if k not in SERVER_FIELDS}
+    # Without the lookup jar in Ranger Admin, implClass must be empty (StarRocks docs).
+    body["implClass"] = LOOKUP["implClass"] if LOOKUP.get("enabled") else ""
+    return body
+
+
+def servicedef_signature(d):
+    """The parts that matter; Ranger adds ids/defaults, so whole documents never compare equal."""
+    names = lambda items: [i.get("name") for i in items or []]
+    return {
+        "implClass": d.get("implClass") or "",
+        "resources": [(r["name"], r.get("parent", ""), sorted(r.get("accessTypeRestrictions") or []))
+                      for r in d.get("resources", [])],
+        "accessTypes": names(d.get("accessTypes")),
+        "configs": names(d.get("configs")),
+        "contextEnrichers": names(d.get("contextEnrichers")),
+        "rowFilter": names((d.get("rowFilterDef") or {}).get("resources")),
+        "dataMask": names((d.get("dataMaskDef") or {}).get("maskTypes")),
+    }
+
+
 def ensure_servicedef():
-    status, _ = call("GET", f"/service/public/v2/api/servicedef/name/{SERVICEDEF['name']}")
-    if status == 200:
-        print(f"service definition {SERVICEDEF['name']}: exists")
+    """Create the service definition, or update it (PUT) when it differs, as the StarRocks docs require."""
+    name = SERVICEDEF["name"]
+    desired = desired_servicedef()
+    status, existing = call("GET", f"/service/public/v2/api/servicedef/name/{name}")
+    if status != 200:
+        call("POST", "/service/public/v2/api/servicedef", desired)
+        print(f"service definition {name}: created (implClass={desired['implClass'] or 'none'})")
         return
-    body = {k: v for k, v in SERVICEDEF.items() if k not in ("id", "guid", "createTime", "updateTime", "version")}
-    call("POST", "/service/public/v2/api/servicedef", body)
-    print(f"service definition {SERVICEDEF['name']}: created")
+    if servicedef_signature(existing) == servicedef_signature(desired):
+        print(f"service definition {name}: up to date")
+        return
+    desired["id"] = existing["id"]
+    call("PUT", f"/service/public/v2/api/servicedef/name/{name}", desired)
+    print(f"service definition {name}: updated (implClass={desired['implClass'] or 'none'})")
 
 
-def ensure_service():
-    status, _ = call("GET", f"/service/public/v2/api/service/name/{SERVICE}")
-    if status == 200:
-        print(f"service {SERVICE}: exists")
-        return
-    call("POST", "/service/public/v2/api/service", {
+def desired_service():
+    if LOOKUP.get("enabled"):
+        user, password = LOOKUP["user"], os.environ["RANGER_LOOKUP_PASSWORD"]
+    else:
+        # Only used by the resource lookup, which is disabled.
+        user, password = "root", "unused"
+    return {
         "name": SERVICE,
         "type": SERVICEDEF["name"],
         "description": CONFIG["service"].get("description", ""),
         "isEnabled": True,
         "configs": {
-            # Only used by Ranger's resource lookup, which this service def does not implement.
-            "username": "root",
-            "password": "unused",
+            "username": user,
+            "password": password,
             "jdbc.driverClassName": "com.mysql.cj.jdbc.Driver",
             "jdbc.url": CONFIG["service"]["jdbcUrl"],
         },
-    })
-    print(f"service {SERVICE}: created")
+    }
+
+
+def ensure_service():
+    desired = desired_service()
+    status, existing = call("GET", f"/service/public/v2/api/service/name/{SERVICE}")
+    if status != 200:
+        call("POST", "/service/public/v2/api/service", desired)
+        print(f"service {SERVICE}: created (lookup user {desired['configs']['username']})")
+        return
+    # Ranger never returns the stored password, so always write the configs back.
+    desired["id"] = existing["id"]
+    call("PUT", f"/service/public/v2/api/service/{existing['id']}", desired)
+    print(f"service {SERVICE}: updated (lookup user {desired['configs']['username']})")
+
+
+def test_connection():
+    """Ranger UI's "Test Connection": only meaningful once StarRocks and the lookup user exist."""
+    if not LOOKUP.get("enabled"):
+        return
+    status, resp = call("POST", "/service/plugins/services/validateConfig", desired_service(), ok=(200, 400))
+    ok = status == 200 and resp is not None and resp.get("statusCode") == 0  # VXResponse.STATUS_SUCCESS
+    msg = (resp or {}).get("msgDesc", "")
+    print(f"test connection: {'OK' if ok else 'not yet'} {msg}".rstrip())
 
 
 def ensure_user(name):
@@ -192,6 +247,7 @@ def main():
     superuser_policies(CONFIG["superUsers"])
     for p in CONFIG["policies"]:
         upsert_policy(dict(configured_policy(p), description=p.get("description", "managed by starrocks-ranger")))
+    test_connection()
     print("ranger setup for StarRocks done")
 
 

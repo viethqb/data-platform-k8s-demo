@@ -14,6 +14,16 @@ service:
   jdbcUrl: jdbc:mysql://starrocks-fe-service.starrocks.svc:9030
   description: StarRocks (managed by charts/starrocks-ranger)
 
+# Resource lookup (autocomplete + Test Connection in the Ranger UI). Needs the
+# StarRocks plugin jar in Ranger Admin (images/ranger-admin). The service
+# connects to StarRocks as this user; its password is the secret key
+# ranger-lookup-password, and it needs a Ranger policy that lets it list
+# catalogs, databases, tables and columns.
+lookup:
+  enabled: false
+  implClass: org.apache.ranger.services.starrocks.RangerServiceStarRocks
+  user: ranger_lookup
+
 plugin:
   # How often the FE polls Ranger Admin for policy changes
   pollIntervalMs: 10000

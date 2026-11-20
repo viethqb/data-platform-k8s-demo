@@ -2,6 +2,8 @@
 users:
   - name: analyst
     passwordKey: analyst-password
+  - name: ranger_lookup                 # Ranger UI resource lookup
+    passwordKey: ranger-lookup-password
 
 # Demo table for the Ranger policies (row filter + mask for analyst)
 demo:

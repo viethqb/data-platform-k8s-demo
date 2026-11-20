@@ -14,3 +14,9 @@ siteProperties:
   # ranger.admin.allow.unauthenticated.access does not cover it.
   # Lab only: use Kerberos for plugins in production.
   ranger.admin.allow.unauthenticated.download.access: "true"
+
+# Official image + the StarRocks lookup plugin (images/ranger-admin, built by
+# scripts/build-images.sh into the local registry).
+image:
+  repository: localhost:5001/ranger-admin
+  tag: 2.9.0-starrocks.1

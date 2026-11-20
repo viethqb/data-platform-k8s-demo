@@ -14,6 +14,10 @@ spec:
           env:
             - name: RANGER_ADMIN_PASSWORD
               valueFrom: { secretKeyRef: { name: {{ .Values.secret }}, key: ranger-admin-password } }
+            {{- if .Values.lookup.enabled }}
+            - name: RANGER_LOOKUP_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ .Values.secret }}, key: ranger-lookup-password } }
+            {{- end }}
           command: ["python3", "-u", "/setup/ranger_setup.py", "/setup/config.json", "/setup/servicedef-starrocks.json"]
           volumeMounts:
             - name: setup

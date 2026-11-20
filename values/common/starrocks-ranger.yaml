@@ -2,10 +2,17 @@
 superUsers:
   - root
 
+# Resource lookup in the Ranger UI (autocomplete, Test Connection) through the
+# StarRocks plugin baked into images/ranger-admin.
+lookup:
+  enabled: true
+  user: ranger_lookup
+
 # Demo: "analyst" may read lakehouse.sales.orders, only the Hanoi rows,
 # with the amount column masked. The table is created by charts/starrocks-setup.
 users:
   - analyst
+  - ranger_lookup
 
 policies:
   - name: analyst-read-orders
@@ -23,3 +30,17 @@ policies:
     resources: { catalog: lakehouse, database: sales, table: orders, column: amount }
     users: [analyst]
     maskType: MASK_NULL
+
+  # Lookup user: list catalogs, databases, tables and columns for autocomplete.
+  # StarRocks lists only objects the user holds a privilege on, and no
+  # metadata-only privilege exists, so this is read access (no writes).
+  - name: ranger-lookup-catalogs
+    type: access
+    resources: { catalog: "*" }
+    users: [ranger_lookup]
+    accesses: [usage]
+  - name: ranger-lookup-read
+    type: access
+    resources: { catalog: "*", database: "*", table: "*", column: "*" }
+    users: [ranger_lookup]
+    accesses: [select]
