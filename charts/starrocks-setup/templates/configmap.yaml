@@ -30,6 +30,16 @@ data:
   setup.sh: |
     set -euo pipefail
     sr() { mysql -h {{ .Values.fe.host }} -P {{ .Values.fe.port }} -u root "$@"; }
+    # The first queries after an FE restart can time out in the planner (cold
+    # Iceberg metadata): retry, and fail the job if it still does not work.
+    retry() {
+      local out n
+      for n in 1 2 3 4 5 6 7 8 9 10; do
+        if out=$("$@" 2>&1); then printf '%s\n' "$out"; return 0; fi
+        echo "attempt $n failed: $out" >&2; sleep 10
+      done
+      return 1
+    }
     until sr --password="$ROOT_PASSWORD" -e 'SELECT 1' >/dev/null 2>&1 \
        || sr --skip-password -e 'SELECT 1' >/dev/null 2>&1; do
       echo "waiting for StarRocks FE"; sleep 10
@@ -72,11 +82,14 @@ data:
 
     {{- if .Values.demo.enabled }}
     # 5. demo data
-    sr -e "CREATE DATABASE IF NOT EXISTS {{ $c.name }}.sales"
-    sr -e "CREATE TABLE IF NOT EXISTS {{ $c.name }}.sales.orders (id BIGINT, city STRING, amount DOUBLE)"
-    if [ "$(sr -N -e 'SELECT COUNT(*) FROM {{ $c.name }}.sales.orders')" = "0" ]; then
-      sr -e "INSERT INTO {{ $c.name }}.sales.orders VALUES (1,'Hanoi',120.5),(2,'Saigon',99.0),(3,'Danang',45.25),(4,'Hanoi',30.0)"
+    retry sr -e "CREATE DATABASE IF NOT EXISTS {{ $c.name }}.sales"
+    retry sr -e "CREATE TABLE IF NOT EXISTS {{ $c.name }}.sales.orders (id BIGINT, city STRING, amount DOUBLE)"
+    rows=$(retry sr -N -e 'SELECT COUNT(*) FROM {{ $c.name }}.sales.orders' | grep -vi warning | tail -1)
+    if [ "$rows" = "0" ]; then
+      retry sr -e "INSERT INTO {{ $c.name }}.sales.orders VALUES (1,'Hanoi',120.5),(2,'Saigon',99.0),(3,'Danang',45.25),(4,'Hanoi',30.0)"
       echo "demo rows inserted"
+    else
+      echo "demo table has $rows rows"
     fi
     {{- end }}
 

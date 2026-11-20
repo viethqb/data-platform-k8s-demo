@@ -24,6 +24,13 @@ spec:
           env:
             - name: RANGER_CONTEXT_PATH
               value: {{ .Values.contextPath | quote }}
+            {{- with .Values.siteProperties }}
+            - name: RANGER_SITE_PROPERTIES
+              value: |
+                {{- range $k, $v := . }}
+                {{ $k }}={{ $v }}
+                {{- end }}
+            {{- end }}
             - name: RANGER_DB_PASSWORD
               valueFrom:
                 secretKeyRef:

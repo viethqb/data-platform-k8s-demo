@@ -22,25 +22,34 @@ cd "${ADMIN_DIR}"
 ./setup.sh
 rm -f "${ADMIN_DIR}/install.properties"
 
-# Serve the webapp under a sub-path so it can share the ingress host.
-python3 - "${ADMIN_DIR}/ews/webapp/WEB-INF/classes/conf/ranger-admin-site.xml" "${CONTEXT_PATH}" <<'PY'
+# ranger-admin-site.xml: context path (serve under a sub-path so the webapp can
+# share the ingress host) plus RANGER_SITE_PROPERTIES ("name=value" lines).
+python3 - "${ADMIN_DIR}/ews/webapp/WEB-INF/classes/conf/ranger-admin-site.xml" <<'PYEOF'
+import os
 import sys
 from xml.etree import ElementTree as ET
 
-path, value = sys.argv[1], sys.argv[2]
+props = {"ranger.contextName": os.environ.get("RANGER_CONTEXT_PATH", "/ranger")}
+for line in os.environ.get("RANGER_SITE_PROPERTIES", "").splitlines():
+    if "=" in line:
+        name, value = line.split("=", 1)
+        props[name.strip()] = value.strip()
+
+path = sys.argv[1]
 tree = ET.parse(path)
 root = tree.getroot()
-for prop in root.findall("property"):
-    if prop.findtext("name", "").strip() == "ranger.contextName":
-        prop.find("value").text = value
-        break
-else:
-    prop = ET.SubElement(root, "property")
-    ET.SubElement(prop, "name").text = "ranger.contextName"
-    ET.SubElement(prop, "value").text = value
+for name, value in props.items():
+    for prop in root.findall("property"):
+        if prop.findtext("name", "").strip() == name:
+            prop.find("value").text = value
+            break
+    else:
+        prop = ET.SubElement(root, "property")
+        ET.SubElement(prop, "name").text = name
+        ET.SubElement(prop, "value").text = value
+    print(f"{name}={value}")
 tree.write(path)
-print(f"ranger.contextName={value}")
-PY
+PYEOF
 
 ./ews/ranger-admin-services.sh start
 

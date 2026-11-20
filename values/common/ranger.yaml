@@ -4,3 +4,9 @@ database:
   name: ranger
   user: ranger
 secretName: ranger-secrets
+
+siteProperties:
+  # Plugins (StarRocks FE) download policies without Kerberos, i.e. through the
+  # unauthenticated endpoint, which Ranger refuses by default. It returns
+  # policies, not secrets; acceptable for the lab, use Kerberos in production.
+  ranger.admin.allow.unauthenticated.access: "true"

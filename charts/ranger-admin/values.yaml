@@ -15,6 +15,9 @@ database:
   name: ranger
   user: ranger
 
+# -- Extra ranger-admin-site.xml properties (name: value)
+siteProperties: {}
+
 # -- Secret with keys db-password and admin-password (created outside Git).
 # admin-password must be >= 8 chars with letters and digits.
 secretName: ranger-secrets
