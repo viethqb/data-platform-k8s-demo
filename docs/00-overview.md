@@ -15,7 +15,7 @@ Vault, Argo CD quản lý mọi thứ từ Git.
 | `https://data-uat.127.0.0.1.nip.io/polaris/` | Apache Polaris (Iceberg REST catalog, có đăng nhập + RBAC) |
 | `https://data-uat.127.0.0.1.nip.io/silo/` | Silo console (object storage, fork của MinIO) |
 | `https://data-uat.127.0.0.1.nip.io/ranger/` | Apache Ranger Admin |
-| `mysql -h 127.0.0.1 -P 9030` | StarRocks (SQL qua TCP, đọc/ghi Iceberg trên Polaris) |
+| `mysql -h 127.0.0.1 -P 19030` | StarRocks (SQL qua TCP, đọc/ghi Iceberg trên Polaris) |
 
 ## Thứ tự cài và vì sao
 

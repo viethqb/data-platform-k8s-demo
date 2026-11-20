@@ -24,8 +24,10 @@ nodes:
         hostPort: 443
         listenAddress: "127.0.0.1"
         protocol: TCP
-      # StarRocks MySQL protocol (TCP, not routable by path), via ingress-nginx tcp-services
+      # StarRocks MySQL protocol (TCP, not routable by path), via ingress-nginx
+      # tcp-services. Host port 19030 so it does not clash with a local
+      # StarRocks on 9030; any host port works for the MySQL protocol.
       - containerPort: 9030
-        hostPort: 9030
+        hostPort: 19030
         listenAddress: "127.0.0.1"
         protocol: TCP

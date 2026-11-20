@@ -23,7 +23,7 @@ Metabase     ${BASE_URL}/metabase/       (create admin on first visit)
 Polaris      ${BASE_URL}/polaris/        $(sv polaris polaris-root client-id) / $(sv polaris polaris-root client-secret)   (realm POLARIS)
 Silo console ${BASE_URL}/silo/           $(sv silo silo-root MINIO_ROOT_USER) / $(sv silo silo-root MINIO_ROOT_PASSWORD)
 Ranger       ${BASE_URL}/ranger/         admin / $(sv ranger ranger-secrets admin-password)
-StarRocks    mysql -h 127.0.0.1 -P 9030  root / $(sv starrocks starrocks-root password)   (catalog: lakehouse)
+StarRocks    mysql -h 127.0.0.1 -P ${STARROCKS_PORT:-9030} root / $(sv starrocks starrocks-root password)   (catalog: lakehouse)
 
 In-cluster endpoints
   Vault               http://vault.vault.svc:8200

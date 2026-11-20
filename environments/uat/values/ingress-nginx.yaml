@@ -16,6 +16,6 @@ controller:
     force-ssl-redirect: "true"
 
 # TCP passthrough (needs the same port in kind-cluster.yaml): StarRocks MySQL
-# protocol on 127.0.0.1:9030 -> starrocks-fe-service:9030.
+# protocol: node port 9030 -> starrocks-fe-service:9030 (host 127.0.0.1:19030).
 tcp:
   "9030": starrocks/starrocks-fe-service:9030

@@ -5,7 +5,7 @@ ghi bảng Iceberg qua **Polaris** (catalog `lakehouse`), dữ liệu nằm trê
 
 | | Địa chỉ |
 |---|---|
-| SQL từ máy bạn | `mysql -h 127.0.0.1 -P 9030 -u root -p` |
+| SQL từ máy bạn | `mysql -h 127.0.0.1 -P 19030 -u root -p` |
 | SQL trong cluster | `starrocks-fe-service.starrocks.svc:9030` |
 | Mật khẩu `root` | Vault `secret/platform/starrocks` → `root-password` (`ENV=uat ./scripts/credentials.sh`) |
 
@@ -36,9 +36,12 @@ tcp:
 ```yaml
 # environments/uat/kind-cluster.yaml (cổng phải có từ lúc tạo cluster)
 - containerPort: 9030
-  hostPort: 9030
+  hostPort: 19030        # trên máy dùng 19030, tránh đụng StarRocks local ở 9030
   listenAddress: "127.0.0.1"
 ```
+
+Với giao thức MySQL, port trên máy khác port trong node không gây vấn đề gì
+(không có redirect như HTTP), nên chọn port nào cũng được.
 
 Web UI của FE (cổng 8030) không hỗ trợ subpath và không cần cho việc dùng hằng
 ngày, nên không đưa ra ingress. Cần thì port-forward:
@@ -99,7 +102,7 @@ catalog cần dùng) và một user Silo riêng.
 
 ```bash
 PW=$(kubectl -n starrocks get secret starrocks-root -o jsonpath='{.data.password}' | base64 -d)
-mysql -h 127.0.0.1 -P 9030 -u root -p"$PW" -e "SHOW BACKENDS\G" | grep -E 'Alive|Version'
+mysql -h 127.0.0.1 -P 19030 -u root -p"$PW" -e "SHOW BACKENDS\G" | grep -E 'Alive|Version'
 ```
 
 Ghi và đọc một bảng Iceberg (dữ liệu nằm trên Silo, metadata trong Polaris):

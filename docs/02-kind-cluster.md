@@ -33,7 +33,7 @@ nodes:
         hostPort: 443
         listenAddress: "127.0.0.1"
       - containerPort: 9030        # StarRocks MySQL protocol (bước 15)
-        hostPort: 9030
+        hostPort: 19030            # 19030 để không đụng StarRocks local ở 9030
         listenAddress: "127.0.0.1"
 ```
 

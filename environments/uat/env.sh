@@ -5,3 +5,5 @@ HOST=data-uat.127.0.0.1.nip.io
 PUBLIC_URL=https://data-uat.127.0.0.1.nip.io
 # TLS certificate for HOST (mkcert if installed, else a self-signed CA).
 TLS_SECRET=platform-tls
+# StarRocks MySQL protocol on the host (kind-cluster.yaml hostPort)
+STARROCKS_PORT=19030

@@ -34,7 +34,7 @@ Tất cả phải trả `200`. StarRocks kiểm tra bằng SQL:
 
 ```bash
 PW=$(kubectl -n starrocks get secret starrocks-root -o jsonpath='{.data.password}' | base64 -d)
-mysql -h 127.0.0.1 -P 9030 -u root -p"$PW" -e 'SHOW CATALOGS'     # default_catalog, lakehouse
+mysql -h 127.0.0.1 -P 19030 -u root -p"$PW" -e 'SHOW CATALOGS'     # default_catalog, lakehouse
 ``` Sau đó mở từng URL trên trình duyệt, đăng nhập và kiểm
 tra tab Network không có request 404 nào tới asset.
 
