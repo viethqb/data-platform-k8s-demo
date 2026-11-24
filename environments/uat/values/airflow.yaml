@@ -2,6 +2,8 @@ config:
   api:
     # UI + REST API are mounted under this path; the ingress must NOT strip it.
     base_url: https://data-uat.127.0.0.1.nip.io/airflow
+  logging:
+    remote_base_log_folder: s3://airflow-logs/uat
 ingress:
   apiServer:
     enabled: true

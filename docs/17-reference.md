@@ -16,6 +16,7 @@ values/common/<app>.yaml                                 values dùng chung mọ
 images/
   polaris-console/      Polaris Console + patch base path (build từ source)
   ranger-admin/         apache/ranger + plugin lookup StarRocks
+  demo-dwh-airflow/     image Airflow của demo-dwh (Dockerfile của project, commit pin)
                         mỗi thư mục: image.env (tên, tag, nguồn, sha256), prepare.sh, Dockerfile/patch
 environments/<env>/
   env.sh                 CLUSTER_NAME, HOST, PUBLIC_URL, TLS_SECRET
@@ -32,6 +33,7 @@ scripts/
   build-images.sh        build images/<tên>/ (Polaris Console, Ranger + StarRocks lookup) -> localhost:5001
   render.sh              render offline giống Argo CD
   vendor-charts.sh       cập nhật chart upstream
+  airflow-git-deploy-key.sh  deploy key SSH chỉ đọc cho git-sync (Vault + gh)
   test-ranger-starrocks.py  test end-to-end phân quyền StarRocks qua Ranger (47 check)
   credentials.sh         in URL + tài khoản
   destroy.sh             xoá cluster

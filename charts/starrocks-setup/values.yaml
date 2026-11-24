@@ -14,6 +14,9 @@ users: []
 #  - name: analyst
 #    passwordKey: analyst-password
 
+# Databases to create in the Iceberg catalog (IF NOT EXISTS)
+databases: []
+
 # Demo table lakehouse.sales.orders with a few rows (only filled when empty)
 demo:
   enabled: false

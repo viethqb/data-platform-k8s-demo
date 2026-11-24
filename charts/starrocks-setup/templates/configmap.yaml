@@ -80,8 +80,14 @@ data:
     echo "user {{ $u.name }} ready"
     {{- end }}
 
+    # 5. databases in the Iceberg catalog that clients expect to exist
+    {{- range .Values.databases }}
+    retry sr -e "CREATE DATABASE IF NOT EXISTS {{ $c.name }}.{{ . }}"
+    echo "database {{ $c.name }}.{{ . }} ready"
+    {{- end }}
+
     {{- if .Values.demo.enabled }}
-    # 5. demo data
+    # 6. demo data
     retry sr -e "CREATE DATABASE IF NOT EXISTS {{ $c.name }}.sales"
     retry sr -e "CREATE TABLE IF NOT EXISTS {{ $c.name }}.sales.orders (id BIGINT, city STRING, amount DOUBLE)"
     rows=$(retry sr -N -e 'SELECT COUNT(*) FROM {{ $c.name }}.sales.orders' | grep -vi warning | tail -1)

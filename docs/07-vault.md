@@ -72,7 +72,9 @@ secret/platform/airflow              fernet-key, api-secret-key, jwt-secret, adm
 secret/platform/ranger               admin-password
 secret/platform/silo                 root-user, root-password
 secret/platform/polaris              root-client-secret, token-key
-secret/platform/starrocks            root-password, analyst-password, ranger-lookup-password
+secret/platform/starrocks            root-password, analyst-password, ranger-lookup-password, dwh-airflow-password
+secret/platform/demo-dwh             pii-salt
+secret/platform/airflow-git          ssh-private-key   (scripts/airflow-git-deploy-key.sh)
 ```
 
 > **Chỉ dành cho lab**: unseal key và root token được lưu vào Secret

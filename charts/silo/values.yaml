@@ -10,6 +10,10 @@ rootSecret: silo-root
 # is served under a sub-path; the ingress strips the path.
 consoleUrl: ""
 
+# -- Buckets created by a Job after install (idempotent, mc mb --ignore-existing)
+buckets: []
+mcImage: docker.io/pgsty/mc:RELEASE.2026-11-12T00-00-00Z
+
 persistence:
   size: 10Gi
   storageClass: ""

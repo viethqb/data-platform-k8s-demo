@@ -1,0 +1,29 @@
+{{- if .Values.buckets }}
+{{- /* Plain Job named after its inputs (see charts/polaris-setup for why not a hook). */}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-buckets-{{ .Values.buckets | toJson | sha256sum | trunc 8 }}
+  labels: {{- include "silo.labels" . | nindent 4 }}
+spec:
+  backoffLimit: 20
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: buckets
+          image: {{ .Values.mcImage }}
+          env:
+            - name: ROOT_USER
+              valueFrom: { secretKeyRef: { name: {{ .Values.rootSecret }}, key: MINIO_ROOT_USER } }
+            - name: ROOT_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ .Values.rootSecret }}, key: MINIO_ROOT_PASSWORD } }
+            - name: MC_HOST_silo
+              value: "http://$(ROOT_USER):$(ROOT_PASSWORD)@{{ .Release.Name }}.{{ .Release.Namespace }}.svc:9000"
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              {{- range .Values.buckets }}
+              mc mb --ignore-existing silo/{{ . }}
+              {{- end }}
+{{- end }}

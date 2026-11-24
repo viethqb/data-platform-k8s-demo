@@ -22,6 +22,7 @@ tagService:
 users:
   - analyst
   - ranger_lookup
+  - dwh_airflow
 
 policies:
   - name: analyst-read-orders
@@ -40,3 +41,42 @@ policies:
     users: [analyst]
     maskType: MASK_NULL
 
+  # dwh_airflow: Airflow/dbt of demo-dwh builds the warehouse in the Iceberg
+  # catalog lakehouse (create/alter/drop databases, tables and views, load data).
+  # dbt-starrocks opens its connection on default_catalog.information_schema,
+  # then switches to the target catalog.
+  - name: dwh-airflow-information-schema
+    type: access
+    resources: { catalog: default_catalog, database: information_schema, table: "*", column: "*" }
+    users: [dwh_airflow]
+    accesses: [select]
+  - name: dwh-airflow-catalog
+    type: access
+    resources: { catalog: lakehouse }
+    users: [dwh_airflow]
+    accesses: [usage, create database, alter, drop]
+  - name: dwh-airflow-databases
+    type: access
+    resources: { catalog: lakehouse, database: "*" }
+    users: [dwh_airflow]
+    accesses: [create table, create view, create materialized view, create function, alter, drop]
+  - name: dwh-airflow-tables
+    type: access
+    resources: { catalog: lakehouse, database: "*", table: "*" }
+    users: [dwh_airflow]
+    accesses: [insert, delete, update, alter, drop, refresh, export]
+  - name: dwh-airflow-columns
+    type: access
+    resources: { catalog: lakehouse, database: "*", table: "*", column: "*" }
+    users: [dwh_airflow]
+    accesses: [select]
+  - name: dwh-airflow-views
+    type: access
+    resources: { catalog: lakehouse, database: "*", view: "*" }
+    users: [dwh_airflow]
+    accesses: [alter, drop]
+  - name: dwh-airflow-materialized-views
+    type: access
+    resources: { catalog: lakehouse, database: "*", materialized_view: "*" }
+    users: [dwh_airflow]
+    accesses: [alter, drop, refresh]
