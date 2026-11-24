@@ -104,6 +104,32 @@ User `dwh_airflow` được `starrocks-setup` tạo trong StarRocks; quyền n�
 Ranger (`values/common/starrocks-ranger.yaml`, các policy `dwh-airflow-*`): tạo,
 sửa, xoá database/bảng/view và ghi dữ liệu trong catalog `lakehouse`.
 
+Hai chi tiết của dbt-starrocks:
+
+- Adapter kết nối thẳng vào `<catalog>.<schema>` (`lakehouse.dbt`). Nếu database
+  chưa có, nó chạy `CREATE DATABASE lakehouse.dbt` từ `default_catalog`, và
+  StarRocks kiểm quyền trên `default_catalog`. Vì vậy `starrocks-setup` tạo sẵn
+  `lakehouse.dbt` (`values/common/starrocks-setup.yaml` → `databases`), để
+  `dwh_airflow` không cần quyền gì trên catalog nội bộ.
+- `dwh_airflow` được đọc `default_catalog.information_schema` (policy
+  `dwh-airflow-information-schema`).
+
+## 12.4 Kiểm tra
+
+```bash
+K="kubectl --context kind-data-platform-uat -n airflow"
+# DAG từ git-sync, không lỗi import, pool lake_write
+$K exec deploy/airflow-scheduler -c scheduler -- airflow dags list-import-errors
+$K exec deploy/airflow-scheduler -c scheduler -- airflow dags list | grep -v example_
+# dbt kết nối StarRocks bằng dwh_airflow
+$K exec deploy/airflow-dag-processor -c dag-processor -- \
+  bash -c 'cd $DBT_PROJECT_DIR && $DBT_EXECUTABLE debug --profiles-dir .'
+```
+
+Chạy thử trong UI: DAG `rebuild_dbt` với `model=fct_order` và `dry_run=true`
+chỉ chạy `dbt ls` trong pod worker, không ghi gì. Log của task hiện trong UI
+và nằm ở `s3://airflow-logs/uat/...` dù pod worker đã bị xoá.
+
 ## Chạy dưới `/airflow`
 
 `environments/uat/values/airflow.yaml`:
