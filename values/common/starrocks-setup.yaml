@@ -7,6 +7,13 @@ users:
   - name: dwh_airflow                   # Airflow/dbt of demo-dwh
     passwordKey: dwh-airflow-password
 
+# dbt-starrocks connects to <catalog>.<schema> (lakehouse.dbt). When it is
+# missing, the adapter runs CREATE DATABASE lakehouse.dbt from default_catalog,
+# which StarRocks authorises against default_catalog: create it up front so
+# dwh_airflow needs no privilege on the internal catalog.
+databases:
+  - dbt
+
 # Demo table for the Ranger policies (row filter + mask for analyst)
 demo:
   enabled: true
