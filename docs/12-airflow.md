@@ -120,7 +120,7 @@ Hai chi tiết của dbt-starrocks:
 K="kubectl --context kind-data-platform-uat -n airflow"
 # DAG từ git-sync, không lỗi import, pool lake_write
 $K exec deploy/airflow-scheduler -c scheduler -- airflow dags list-import-errors
-$K exec deploy/airflow-scheduler -c scheduler -- airflow dags list | grep -v example_
+$K exec deploy/airflow-scheduler -c scheduler -- airflow dags list
 # dbt kết nối StarRocks bằng dwh_airflow
 $K exec deploy/airflow-dag-processor -c dag-processor -- \
   bash -c 'cd $DBT_PROJECT_DIR && $DBT_EXECUTABLE debug --profiles-dir .'
@@ -165,16 +165,16 @@ createUserJob:
 
 | Cấu hình | Lý do |
 |---|---|
-| `executor: LocalExecutor`, tắt redis/pgbouncer/statsd | Gọn cho lab |
+| `executor: KubernetesExecutor`, tắt redis/pgbouncer/statsd | Mỗi task một pod, không cần Celery/Redis |
 | `createUserJob/migrateDatabaseJob.useHelmHooks: false` | Argo CD không chạy Helm hook giống Helm |
 | `apiServer.startupProbe.failureThreshold: 30` | Airflow 3 mất 60-90s mới listen; probe mặc định chỉ chờ 60s nên pod bị CrashLoop |
-| `env: AIRFLOW__CORE__LOAD_EXAMPLES=True` | Image set sẵn env `=false`, và env đè lên `airflow.cfg` |
+| `env: AIRFLOW__CORE__LOAD_EXAMPLES=False` | Chỉ có DAG của demo-dwh; env đè lên `airflow.cfg` nên không phụ thuộc image hay config của chart |
 | `scheduler/triggerer/dagProcessor` probe `timeoutSeconds: 60` | Probe chạy `airflow jobs check`, mỗi lần khởi động một tiến trình Python (khoảng 15s CPU). Khi máy tải nặng, timeout mặc định 20s bị vượt, pod restart và càng làm máy tải nặng hơn |
 
 ## Checkpoint
 
 ```bash
-kubectl -n airflow exec airflow-scheduler-0 -c scheduler -- airflow dags list | head -5
+kubectl -n airflow exec deploy/airflow-scheduler -c scheduler -- airflow dags list   # chỉ 5 DAG của demo-dwh
 curl -s -H 'Accept: text/html' https://data-uat.127.0.0.1.nip.io/airflow/ | grep -o '<base href="[^"]*"'
 # <base href="/airflow/"
 ```

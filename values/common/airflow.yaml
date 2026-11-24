@@ -44,10 +44,10 @@ dags:
         memory: 32Mi
 
 env:
-  # The apache/airflow image sets AIRFLOW__CORE__LOAD_EXAMPLES=false, and env
-  # vars win over airflow.cfg. Examples stay on as a smoke test of the executor.
+  # Only the demo-dwh DAGs from git-sync, no example DAGs. Env vars win over
+  # airflow.cfg, so this holds whatever the image or chart config says.
   - name: AIRFLOW__CORE__LOAD_EXAMPLES
-    value: "True"
+    value: "False"
   # demo-dwh runtime (dbt/profiles.yml target stg, dags/_common/starrocks_client.py)
   - name: DBT_TARGET
     value: stg
