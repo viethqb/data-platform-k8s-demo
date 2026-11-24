@@ -43,6 +43,13 @@ policies:
 
   # dwh_airflow: Airflow/dbt of demo-dwh builds the warehouse in the Iceberg
   # catalog lakehouse (create/alter/drop databases, tables and views, load data).
+  # dbt-starrocks opens its connection on default_catalog.information_schema,
+  # then switches to the target catalog.
+  - name: dwh-airflow-information-schema
+    type: access
+    resources: { catalog: default_catalog, database: information_schema, table: "*", column: "*" }
+    users: [dwh_airflow]
+    accesses: [select]
   - name: dwh-airflow-catalog
     type: access
     resources: { catalog: lakehouse }
