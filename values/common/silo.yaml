@@ -1,0 +1,4 @@
+# Buckets the platform needs (charts/polaris-setup also creates "warehouse").
+buckets:
+  - warehouse
+  - airflow-logs

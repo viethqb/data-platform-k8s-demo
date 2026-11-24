@@ -7,3 +7,5 @@ PUBLIC_URL=https://data-uat.127.0.0.1.nip.io
 TLS_SECRET=platform-tls
 # StarRocks MySQL protocol on the host (kind-cluster.yaml hostPort)
 STARROCKS_PORT=19030
+# Private repository with the Airflow DAGs (git-sync, read-only deploy key)
+AIRFLOW_DAGS_REPO=viethqb/demo-dwh

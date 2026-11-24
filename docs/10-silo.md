@@ -39,7 +39,7 @@ curl -s https://data-uat.127.0.0.1.nip.io/silo/ | grep -o '<base href="[^"]*"'
 
 Đăng nhập console bằng user/password trong `ENV=uat ./scripts/credentials.sh`.
 
-Bucket `warehouse` cho Polaris do Job `polaris-setup` tự tạo ở bước 11. Muốn tạo bucket khác bằng tay từ trong cluster:
+Bucket `warehouse` (Polaris) và `airflow-logs` (log task của Airflow) do Job `silo-buckets` của chart tạo, danh sách ở `values/common/silo.yaml` → `buckets`. Muốn tạo bucket khác bằng tay từ trong cluster:
 
 ```bash
 PW=$(kubectl -n silo get secret silo-root -o jsonpath='{.data.MINIO_ROOT_PASSWORD}' | base64 -d)

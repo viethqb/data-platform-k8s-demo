@@ -1,10 +1,85 @@
-executor: LocalExecutor
+# Every task runs in its own pod (KubernetesExecutor); scheduler, dag-processor
+# and those worker pods all use the demo-dwh image.
+executor: KubernetesExecutor
 
-# The apache/airflow image sets AIRFLOW__CORE__LOAD_EXAMPLES=false, and env vars
-# win over airflow.cfg, so example DAGs must be enabled through env too.
+# demo-dwh image: Airflow 3.4 + Cosmos + StarRocks client + dbt (venv, project
+# and manifest baked in). Built by scripts/build-images.sh (images/demo-dwh-airflow).
+airflowVersion: "3.4.0"
+images:
+  airflow:
+    repository: localhost:5001/demo-dwh-airflow
+    tag: 45cf8ed3edf0
+    pullPolicy: IfNotPresent
+  # Base image of the KubernetesExecutor pod template (the executor also sets
+  # worker_container_repository/tag from images.airflow); keep them identical.
+  pod_template:
+    repository: localhost:5001/demo-dwh-airflow
+    tag: 45cf8ed3edf0
+    pullPolicy: IfNotPresent
+
+# DAGs from the private repository viethqb/demo-dwh (folder dags/), over SSH
+# with a read-only deploy key (scripts/airflow-git-deploy-key.sh -> Vault ->
+# Secret airflow-git-ssh). git-sync runs as a sidecar of the dag-processor and
+# scheduler, and as an init container of every worker pod.
+dags:
+  persistence:
+    enabled: false
+  gitSync:
+    enabled: true
+    repo: git@github.com:viethqb/demo-dwh.git
+    branch: main
+    rev: HEAD
+    ref: main
+    depth: 1
+    subPath: dags
+    period: 60s
+    sshKeySecret: airflow-git-ssh
+    # github.com host keys (https://api.github.com/meta, "ssh_keys")
+    knownHosts: |
+      github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
+      github.com ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg=
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+
 env:
+  # The apache/airflow image sets AIRFLOW__CORE__LOAD_EXAMPLES=false, and env
+  # vars win over airflow.cfg. Examples stay on as a smoke test of the executor.
   - name: AIRFLOW__CORE__LOAD_EXAMPLES
     value: "True"
+  # demo-dwh runtime (dbt/profiles.yml target stg, dags/_common/starrocks_client.py)
+  - name: DBT_TARGET
+    value: stg
+  - name: STARROCKS_HOST
+    value: starrocks-fe-service.starrocks.svc
+  - name: STARROCKS_PORT
+    value: "9030"
+  - name: DWH_CATALOG
+    value: lakehouse
+
+# Secrets from Vault (External Secrets), as env of every Airflow container and worker pod.
+secret:
+  - envName: STARROCKS_USER
+    secretName: airflow-demo-dwh
+    secretKey: STARROCKS_USER
+  - envName: STARROCKS_PASSWORD
+    secretName: airflow-demo-dwh
+    secretKey: STARROCKS_PASSWORD
+  - envName: DWH_PII_SALT
+    secretName: airflow-demo-dwh
+    secretKey: DWH_PII_SALT
+  - envName: AIRFLOW_CONN_SILO_LOGS
+    secretName: airflow-logs-connection
+    secretKey: connection
+
+config:
+  logging:
+    # Worker pods are deleted when their task ends: keep task logs on Silo (S3).
+    # The chart's logs PVC needs ReadWriteMany, which kind's local-path lacks.
+    remote_logging: "True"
+    remote_log_conn_id: silo_logs
+    delete_local_logs: "True"
 
 ingress:
   apiServer:
@@ -47,6 +122,22 @@ migrateDatabaseJob:
   applyCustomEnv: false
   jobAnnotations:
     argocd.argoproj.io/hook: Sync
+  # demo-dwh serialises writes to the lake through the pool lake_write (STD-09-13).
+  args:
+    - bash
+    - -c
+    - >-
+      airflow db migrate
+      && exec airflow pools set lake_write 1 'One writer to the lake at a time (STD-09-13)'
+
+# Resources of every KubernetesExecutor worker pod (dbt runs in them)
+workers:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      memory: 2Gi
 
 apiServer:
   # Airflow 3 api-server needs ~60-90s before it listens.

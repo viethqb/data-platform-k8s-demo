@@ -4,6 +4,8 @@ users:
     passwordKey: analyst-password
   - name: ranger_lookup                 # Ranger UI resource lookup
     passwordKey: ranger-lookup-password
+  - name: dwh_airflow                   # Airflow/dbt of demo-dwh
+    passwordKey: dwh-airflow-password
 
 # Demo table for the Ranger policies (row filter + mask for analyst)
 demo:

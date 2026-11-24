@@ -9,6 +9,7 @@
 #   5. ingress-nginx + Argo CD        Helm, from charts/ (Argo CD adopts both later)
 #   6. root app-of-apps               charts/platform-apps + environments/<env>/platform-apps.yaml
 #   7. Vault init/unseal/config/seed  scripts/vault-setup.sh
+#   8. Airflow git-sync deploy key    scripts/airflow-git-deploy-key.sh (read-only, via gh)
 #
 # Usage: ENV=uat ./scripts/bootstrap.sh
 #   REVISION=<branch|tag|sha>  Git revision Argo CD syncs (default: main)
@@ -118,6 +119,12 @@ EOF
 
 log "7. Vault"
 "${SCRIPTS}/vault-setup.sh"
+
+if [ -n "${AIRFLOW_DAGS_REPO:-}" ]; then
+  log "8. Airflow git-sync deploy key"
+  "${SCRIPTS}/airflow-git-deploy-key.sh" \
+    || echo "deploy key not registered: rerun scripts/airflow-git-deploy-key.sh (needs gh with admin on ${AIRFLOW_DAGS_REPO})"
+fi
 
 cat <<EOF
 
