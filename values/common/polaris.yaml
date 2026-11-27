@@ -44,6 +44,13 @@ extraEnv:
         name: polaris-storage
         key: awsSecretAccessKey
 
+# Let DROP TABLE ... FORCE delete the table's files on Silo. Iceberg REST clients ask for it with
+# purgeRequested=true, which Polaris refuses (403) by default. The files are deleted by a Polaris
+# background task with the server's S3 keys above. StarRocks sends purgeRequested only from
+# egret-starrocks patch 0011 (4.1.7-egret.6) on: before that, every drop leaves the files.
+features:
+  DROP_WITH_PURGE_ENABLED: true
+
 ingress:
   enabled: true
   className: nginx
